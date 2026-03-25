@@ -1,0 +1,16 @@
+name: email-triage-env
+description: Email classification environment for support, sales, and complaints
+version: 1.0
+
+observation:
+  type: object
+  properties:
+    email:
+      type: string
+
+action:
+  type: object
+  properties:
+    label:
+      type: string
+      enum: [support, sales, complaint]
