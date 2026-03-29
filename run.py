@@ -6,7 +6,7 @@ env = EmailEnv()
 
 
 # -------- RESET --------
-@app.route("/reset", methods=["POST"])
+@app.route("/reset", methods=["GET", "POST"])
 def reset():
     result = env.reset()
 
