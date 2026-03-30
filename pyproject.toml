@@ -1,0 +1,14 @@
+[project]
+name = "email-triage-env"
+version = "0.1.0"
+description = "Email classification environment"
+dependencies = [
+    "flask",
+    "pydantic"
+]
+
+[project.scripts]
+server = "server.app:app"
+
+[tool.openenv]
+entry_point = "env.EmailEnv"

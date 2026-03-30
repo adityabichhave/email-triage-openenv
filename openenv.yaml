@@ -1,16 +1,37 @@
 name: email-triage-env
+<<<<<<< HEAD
 description: Email classification environment for support, sales, and complaints
 version: 1.0
 
 observation:
+=======
+description: Email classification environment
+
+observation_space:
+>>>>>>> 00d0977 (final fix: added uv.lock and multi-mode deployment support)
   type: object
   properties:
     email:
       type: string
 
+<<<<<<< HEAD
 action:
   type: object
   properties:
     label:
       type: string
       enum: [support, sales, complaint]
+=======
+action_space:
+  type: string
+  enum:
+    - support
+    - sales
+    - complaint
+
+reward_range:
+  min: -1
+  max: 1
+
+entry_point: env.EmailEnv
+>>>>>>> 00d0977 (final fix: added uv.lock and multi-mode deployment support)

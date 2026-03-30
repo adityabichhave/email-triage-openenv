@@ -6,14 +6,27 @@ env = EmailEnv()
 
 
 # -------- RESET --------
+<<<<<<< HEAD
 @app.route("/reset", methods=["GET", "POST"])
+=======
+@app.route("/reset", methods=["POST"])
+>>>>>>> 00d0977 (final fix: added uv.lock and multi-mode deployment support)
 def reset():
     result = env.reset()
 
     return jsonify({
         "observation": {
             "email": result["observation"].email
+<<<<<<< HEAD
         }
+=======
+        },
+        "reward": {
+            "value": 0.0
+        },
+        "done": False,
+        "info": {}
+>>>>>>> 00d0977 (final fix: added uv.lock and multi-mode deployment support)
     })
 
 
@@ -27,6 +40,7 @@ def step():
     result = env.step(action)
 
     return jsonify({
+<<<<<<< HEAD
         "observation": {
             "email": result["observation"].email
         },
@@ -36,6 +50,17 @@ def step():
         "done": result["done"],
         "info": result["info"]
     })
+=======
+    "observation": {
+        "email": result["observation"].email
+    },
+    "reward": {
+        "value": 0.0
+    },
+    "done": False,
+    "info": {}
+})
+>>>>>>> 00d0977 (final fix: added uv.lock and multi-mode deployment support)
 
 
 # -------- STATE --------
@@ -57,4 +82,8 @@ def run():
 
 
 if __name__ == "__main__":
+<<<<<<< HEAD
     app.run(host="0.0.0.0", port=7860)
+=======
+    app.run(host="0.0.0.0", port=7860)
+>>>>>>> 00d0977 (final fix: added uv.lock and multi-mode deployment support)
