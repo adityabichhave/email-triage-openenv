@@ -1,19 +1,32 @@
+import sys
+import os
+
+# ✅ Ensure current directory (repo root) is in path
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(CURRENT_DIR)
+
 from env import EmailEnv
 
-env = EmailEnv()
 
-obs = env.reset()
+def main():
+    try:
+        env = EmailEnv()
 
-actions = ["support", "sales", "complaint"]
+        obs = env.reset()
 
-total_score = 0
+        actions = ["support", "sales", "complaint"]
 
-for a in actions:
-    result = env.step(a)
-    total_score += result["info"]["score"]
+        total_score = 0
 
-<<<<<<< HEAD
-print("FINAL SCORE:", total_score / len(actions))
-=======
-print("FINAL SCORE:", total_score / len(actions))
->>>>>>> 00d0977 (final fix: added uv.lock and multi-mode deployment support)
+        for a in actions:
+            result = env.step(a)
+            total_score += result["info"]["score"]
+
+        print("FINAL SCORE:", total_score / len(actions))
+
+    except Exception as e:
+        print("ERROR:", str(e))
+
+
+if __name__ == "__main__":
+    main()
