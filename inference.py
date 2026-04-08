@@ -1,31 +1,62 @@
 import sys
 import os
 
-# ✅ Ensure current directory (repo root) is in path
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(CURRENT_DIR)
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from env import EmailEnv
 
 
+def log_start():
+    print("[START] task=email_triage env=openenv model=rule_based", flush=True)
+
+
+def log_step(step, action, reward, done):
+    print(f"[STEP] step={step} action={action} reward={reward:.2f} done={str(done).lower()} error=null", flush=True)
+
+
+def log_end(success, steps, score, rewards):
+    rewards_str = ",".join(f"{r:.2f}" for r in rewards)
+    print(f"[END] success={str(success).lower()} steps={steps} score={score:.2f} rewards={rewards_str}", flush=True)
+
+
 def main():
+    rewards = []
+    steps = 0
+    success = False
+    score = 0.0
+
+    log_start()
+
     try:
         env = EmailEnv()
-
         obs = env.reset()
 
         actions = ["support", "sales", "complaint"]
 
-        total_score = 0
+        for i, action in enumerate(actions, start=1):
+            result = env.step(action)
 
-        for a in actions:
-            result = env.step(a)
-            total_score += result["info"]["score"]
+            reward = result.get("reward", {}).get("value", 0.0)
+            done = result.get("done", False)
 
-        print("FINAL SCORE:", total_score / len(actions))
+            rewards.append(reward)
+            steps = i
+
+            log_step(i, action, reward, done)
+
+            if done:
+                break
+
+        if rewards:
+            score = sum(rewards) / len(rewards)
+
+        success = score > 0
 
     except Exception as e:
-        print("ERROR:", str(e))
+        print(f"[STEP] step=0 action=none reward=0.00 done=true error={str(e)}", flush=True)
+
+    finally:
+        log_end(success, steps, score, rewards)
 
 
 if __name__ == "__main__":
