@@ -1,19 +1,16 @@
-from pydantic import BaseModel
+class Observation:
+    def __init__(self, email):
+        self.email = email
 
 
-# ----------- Models -----------
-
-class Observation(BaseModel):
-    email: str | None
-
-
-class Action(BaseModel):
-    label: str
+class Action:
+    def __init__(self, label):
+        self.label = label
 
 
-class Reward(BaseModel):
-    value: float
-
+class Reward:
+    def __init__(self, value):
+        self.value = value
 
 # ----------- Agent Logic -----------
 
