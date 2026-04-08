@@ -4,11 +4,9 @@ version = "0.1.0"
 description = "Email classification environment"
 dependencies = [
     "flask",
-    "pydantic"
+    "pydantic>=1.10",
+    "openenv>=0.2.0"
 ]
 
 [project.scripts]
-server = "server.app:app"
-
-[tool.openenv]
-entry_point = "env.EmailEnv"
+server = "server.app:main"
