@@ -1,21 +1,22 @@
-import sys
 import os
+import sys
 
-# ✅ FORCE ROOT PATH (STRONG FIX)
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-if ROOT_DIR not in sys.path:
-    sys.path.insert(0, ROOT_DIR)
+from openai import OpenAI
 
-try:
-    from env import EmailEnv
-except ModuleNotFoundError:
-    # fallback (very important for validator)
-    sys.path.insert(0, ".")
-    from env import EmailEnv
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from env import EmailEnv
+
+
+# ✅ Setup client using THEIR variables
+client = OpenAI(
+    base_url=os.environ.get("API_BASE_URL"),
+    api_key=os.environ.get("API_KEY"),
+)
 
 
 def log_start():
-    print("[START] task=email_triage env=openenv model=rule_based", flush=True)
+    print("[START] task=email_triage env=openenv model=llm", flush=True)
 
 
 def log_step(step, action, reward, done):
@@ -27,11 +28,35 @@ def log_end(success, steps, score, rewards):
     print(f"[END] success={str(success).lower()} steps={steps} score={score:.2f} rewards={rewards_str}", flush=True)
 
 
+def get_action(email):
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "Classify email into support, sales, or complaint"},
+                {"role": "user", "content": email}
+            ],
+            max_tokens=10,
+        )
+
+        output = response.choices[0].message.content.lower()
+
+        if "sales" in output:
+            return "sales"
+        elif "complaint" in output:
+            return "complaint"
+        else:
+            return "support"
+
+    except Exception:
+        return "support"
+
+
 def main():
     rewards = []
     steps = 0
-    success = False
     score = 0.0
+    success = False
 
     log_start()
 
@@ -39,9 +64,11 @@ def main():
         env = EmailEnv()
         obs = env.reset()
 
-        actions = ["support", "sales", "complaint"]
+        for i in range(1, 6):
+            email = obs["observation"].email
 
-        for i, action in enumerate(actions, start=1):
+            action = get_action(email)
+
             result = env.step(action)
 
             reward = result.get("reward", {}).get("value", 0.0)
@@ -52,6 +79,8 @@ def main():
 
             log_step(i, action, reward, done)
 
+            obs = result
+
             if done:
                 break
 
@@ -61,7 +90,6 @@ def main():
         success = score > 0
 
     except Exception as e:
-        # ✅ prevents crash (VERY IMPORTANT)
         print(f"[STEP] step=0 action=none reward=0.00 done=true error={str(e)}", flush=True)
 
     finally:
