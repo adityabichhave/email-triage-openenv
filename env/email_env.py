@@ -43,51 +43,42 @@ class EmailEnv:
         self.email = None
 
     def reset(self):
-        self.current = 0
+    self.current = 0
+    self.email = self.tasks[self.current]
+
+    return {
+        "observation": {"email": self.email["email"]}
+    }
+
+   def step(self, action):
+    correct = self.email["label"]
+
+    if action == correct:
+        reward = 0.8
+        score = 0.9
+    elif action in ["support", "sales", "complaint"]:
+        reward = 0.2
+        score = 0.5
+    else:
+        reward = -0.5
+        score = 0.1
+
+    self.current += 1
+
+    if self.current >= len(self.tasks):
+        done = True
+        next_email = None
+    else:
+        done = False
         self.email = self.tasks[self.current]
+        next_email = self.email["email"]
 
-        return {
-            "observation": Observation(email=self.email["email"])
-        }
-
-    def step(self, action=None):
-        email_text = self.email["email"]
-
-        predicted_label = agent(email_text)
-        action = Action(label=predicted_label)
-
-        correct = self.email["label"]
-
-        if action.label == correct:
-            reward = 0.8
-            score = 0.9
-        elif action.label in ["support", "sales", "complaint"]:
-            reward = 0.2
-            score = 0.5
-        else:
-            reward = -0.5
-            score = 0.1
-
-        self.current += 1
-
-        if self.current >= len(self.tasks):
-            done = True
-            next_email = None
-        else:
-            done = False
-            self.email = self.tasks[self.current]
-            next_email = self.email["email"]
-
-        return {
-            "observation": Observation(email=next_email),
-            "reward": Reward(value=reward),
-            "done": done,
-            "info": {
-                "score": score,
-                "correct_label": correct,
-                "predicted_label": action.label
-            }
-        }
+    return {
+        "observation": {"email": next_email},
+        "reward": {"value": reward},
+        "done": done,
+        "info": {"score": score}
+    }
 
     def state(self):
         return {
