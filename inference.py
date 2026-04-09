@@ -1,6 +1,7 @@
 import os
 import sys
-import requests
+import json
+import urllib.request
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -27,11 +28,6 @@ def get_action(email):
     try:
         url = f"{API_BASE_URL}/chat/completions"
 
-        headers = {
-            "Authorization": f"Bearer {API_KEY}",
-            "Content-Type": "application/json"
-        }
-
         data = {
             "model": "gpt-3.5-turbo",
             "messages": [
@@ -41,9 +37,19 @@ def get_action(email):
             "max_tokens": 10
         }
 
-        response = requests.post(url, headers=headers, json=data)
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(data).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {API_KEY}",
+                "Content-Type": "application/json"
+            }
+        )
 
-        output = response.json()["choices"][0]["message"]["content"].lower()
+        with urllib.request.urlopen(req) as response:
+            result = json.loads(response.read().decode())
+
+        output = result["choices"][0]["message"]["content"].lower()
 
         if "sales" in output:
             return "sales"
