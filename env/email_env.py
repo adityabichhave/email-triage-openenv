@@ -57,12 +57,12 @@ def step(self, action):
         done = False
         self.email = self.tasks[self.current]
 
-    return {
-        "observation": Observation(self.email["email"]),  # ✅ ALWAYS VALID
-        "reward": Reward(float(reward)),
-        "done": done,
-        "info": {"score": float(score)}
-    }
+return {
+    "observation": Observation(self.email["email"]),
+    "reward": {"value": float(reward)},   # ✅ FIXED
+    "done": done,
+    "info": {"score": float(score)}
+}
 
     def state(self):
         return {
