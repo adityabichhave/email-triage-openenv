@@ -1,24 +1,26 @@
 import os
 import sys
-import json
-import urllib.request
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from env import EmailEnv
-
-API_BASE_URL = os.environ.get("API_BASE_URL")
-API_KEY = os.environ.get("API_KEY")
-
-# ✅ TRY OpenAI (if available)
-try:
-    from openai import OpenAI
-    client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
-    USE_OPENAI = True
-except Exception:
-    USE_OPENAI = False
+from openai import OpenAI
 
 
+# 🔥 REQUIRED ENV VARIABLES
+API_BASE_URL = os.environ["API_BASE_URL"]
+API_KEY = os.environ["API_KEY"]
+MODEL_NAME = os.environ["MODEL_NAME"]
+
+
+# 🔥 MANDATORY OpenAI client
+client = OpenAI(
+    base_url=API_BASE_URL,
+    api_key=API_KEY
+)
+
+
+# -------- LOGS --------
 def log_start():
     print("[START] task=email_triage env=openenv model=llm", flush=True)
 
@@ -32,43 +34,20 @@ def log_end(success, steps, score, rewards):
     print(f"[END] success={str(success).lower()} steps={steps} score={score:.2f} rewards={rewards_str}", flush=True)
 
 
+# -------- LLM CALL --------
 def call_llm(email):
-    if USE_OPENAI:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "Classify email into support, sales, or complaint"},
-                {"role": "user", "content": email}
-            ],
-            max_tokens=10,
-        )
-        text = response.choices[0].message.content.lower()
-    else:
-        url = API_BASE_URL + "/chat/completions"
+    response = client.chat.completions.create(
+        model=MODEL_NAME,
+        messages=[
+            {"role": "system", "content": "Reply ONLY with one word: support, sales, or complaint"},
+            {"role": "user", "content": email}
+        ],
+        max_tokens=5,
+    )
 
-        payload = {
-            "model": "gpt-3.5-turbo",
-            "messages": [
-                {"role": "system", "content": "Classify email into support, sales, or complaint"},
-                {"role": "user", "content": email}
-            ],
-            "max_tokens": 10
-        }
+    text = response.choices[0].message.content.strip().lower()
 
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={
-                "Authorization": "Bearer " + API_KEY,
-                "Content-Type": "application/json"
-            }
-        )
-
-        with urllib.request.urlopen(req) as response:
-            result = json.loads(response.read().decode())
-
-        text = result["choices"][0]["message"]["content"].lower()
-
+    # 🔥 HARD FILTER (guarantee valid action)
     if "sales" in text:
         return "sales"
     elif "complaint" in text:
@@ -77,6 +56,7 @@ def call_llm(email):
         return "support"
 
 
+# -------- MAIN --------
 def main():
     rewards = []
     steps = 0
@@ -87,15 +67,15 @@ def main():
         env = EmailEnv()
         obs = env.reset()
 
-        # ✅ LOOP INSIDE TRY (VERY IMPORTANT)
-        for i in range(1, 8):
+        # 🔥 FIXED NUMBER OF STEPS (NO BREAK)
+        for i in range(1, 6):
             email = obs["observation"].email
 
             action = call_llm(email)
 
             result = env.step(action)
 
-            reward = result["reward"]["value"]
+            reward = result["reward"].value
             done = result["done"]
 
             rewards.append(reward)
