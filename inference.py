@@ -1,7 +1,7 @@
 import os
 import sys
 
-# 🔥 FIX
+# 🔥 Ensure openai is available
 try:
     from openai import OpenAI
 except ImportError:
@@ -11,17 +11,19 @@ except ImportError:
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from env import EmailEnv
-from openai import OpenAI
 
 
 API_BASE_URL = os.environ["API_BASE_URL"]
 API_KEY = os.environ["API_KEY"]
-MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-3.5-turbo")
+
+# fallback if not provided
+MODEL_NAME = os.environ.get("MODEL_NAME", "openai/gpt-3.5-turbo")
 
 
+# 🔥 Correct client init
 client = OpenAI(
-    base_url=API_BASE_URL,
-    api_key=API_KEY
+    api_key=API_KEY,
+    base_url=API_BASE_URL
 )
 
 
@@ -40,7 +42,7 @@ def log_end(success, steps, score, rewards):
 
 def call_llm(email):
     response = client.chat.completions.create(
-        model=MODEL_NAME,   # ✅ FIXED (with comma)
+        model=MODEL_NAME,   # ✅ HF router compatible
         messages=[
             {"role": "system", "content": "Reply ONLY with one word: support, sales, or complaint"},
             {"role": "user", "content": email}
