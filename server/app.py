@@ -30,7 +30,7 @@ def reset():
 
     return jsonify({
         "observation": {
-            "email": result["observation"]["email"]
+            "email": result["observation"].email
         },
         "reward": {
             "value": 0.0
@@ -53,10 +53,10 @@ def step():
 
     return jsonify({
         "observation": {
-            "email": result["observation"]["email"]
+            "email": result["observation"].email
         },
         "reward": {
-            "value": result["reward"]["value"]
+            "value": result["reward"].value
         },
         "done": result["done"],
         "info": result["info"]
