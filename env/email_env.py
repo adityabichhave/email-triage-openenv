@@ -43,11 +43,11 @@ def step(self, action):
     # ✅ MOVE UPDATE AFTER COMPUTATION
     self.current += 1
 
-    if self.current >= len(self.tasks):
-        self.current = 0
-        done = False
-    else:
-        done = False
+if self.current >= len(self.tasks):
+    done = True
+    self.current = 0
+else:
+    done = False
 
     # 🔥 CRITICAL: ALWAYS UPDATE EMAIL AFTER CURRENT IS FINAL
     self.email = self.tasks[self.current]
