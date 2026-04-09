@@ -49,13 +49,14 @@ def step(self, action):
 
     if self.current >= len(self.tasks):
         done = True
-        self.current = len(self.tasks) - 1
+        next_email = self.email["email"]   # ✅ keep last valid email
     else:
         done = False
         self.email = self.tasks[self.current]
+        next_email = self.email["email"]
 
     return {
-        "observation": Observation(self.email["email"]),
+        "observation": Observation(next_email),
         "reward": Reward(float(reward)),
         "done": done,
         "info": {"score": float(score)}
