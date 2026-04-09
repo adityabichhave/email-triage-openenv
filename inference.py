@@ -3,9 +3,6 @@ import sys
 import json
 import urllib.request
 
-# ✅ keep import (MANDATORY for validator rule)
-from openai import OpenAI  
-
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from env import EmailEnv
@@ -29,7 +26,6 @@ def log_end(success, steps, score, rewards):
     print(f"[END] success={str(success).lower()} steps={steps} score={score:.2f} rewards={rewards_str}", flush=True)
 
 
-# 🔥 SAFE API CALL (NO CLIENT)
 def call_llm(email):
     url = API_BASE_URL + "/chat/completions"
 
