@@ -1,6 +1,13 @@
 import os
 import sys
 
+# 🔥 FIX
+try:
+    from openai import OpenAI
+except ImportError:
+    os.system("pip install openai==1.30.1")
+    from openai import OpenAI
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from env import EmailEnv
