@@ -29,9 +29,9 @@ def call_llm(email):
     url = API_BASE_URL + "/chat/completions"
 
     payload = {
-        "model": "gpt-3.5-turbo",
+        model=os.environ["MODEL_NAME"]
         "messages": [
-            {"role": "system", "content": "Classify email into support, sales, or complaint"},
+            {"role": "system", "content": "Reply ONLY with one word: support, sales, or complaint. No explanation."},
             {"role": "user", "content": email}
         ],
         "max_tokens": 10
