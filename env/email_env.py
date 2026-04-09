@@ -1,11 +1,4 @@
-class Observation:
-    def __init__(self, email):
-        self.email = email
-
-
-class Reward:
-    def __init__(self, value):
-        self.value = value
+from openenv import Observation, Reward
 
 
 class EmailEnv:
@@ -26,13 +19,13 @@ class EmailEnv:
         self.email = self.tasks[self.current]
 
         return {
-            "observation": Observation(self.email["email"])
+            "observation": Observation(email=self.email["email"])
         }
 
     def step(self, action):
         correct = self.email["label"]
 
-        # ✅ STRICT (0,1) RANGE
+        # ✅ STRICT RANGE (0,1)
         if action == correct:
             score = 0.9
         elif action in ["support", "sales", "complaint"]:
@@ -40,21 +33,21 @@ class EmailEnv:
         else:
             score = 0.3
 
-        reward = score  # important
+        reward = score
 
         self.current += 1
 
         if self.current >= len(self.tasks):
             done = True
-            next_email = None
+            next_email = ""
         else:
             done = False
             self.email = self.tasks[self.current]
             next_email = self.email["email"]
 
         return {
-            "observation": Observation(next_email),
-            "reward": Reward(float(reward)),   # ✅ OBJECT
+            "observation": Observation(email=next_email),
+            "reward": Reward(value=float(reward)),   # ✅ REAL OPENENV OBJECT
             "done": done,
             "info": {"score": float(score)}
         }
