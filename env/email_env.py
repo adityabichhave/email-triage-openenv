@@ -24,43 +24,38 @@ class EmailEnv:
     def reset(self):
         self.current = 0
         self.email = self.tasks[self.current]
-
         return {
-            "observation": Observation(self.email["email"])
+            "observation": Observation(self.email["email"]),
+            "reward": Reward(0.1),
+            "done": False,
+            "info": {"score": 0.1}
         }
 
-def step(self, action):
-    if self.email is None:
-        self.reset()
+    def step(self, action):
+        correct = self.email["label"]
 
-    correct = self.email["label"]
+        if action == correct:
+            reward, score = 0.9, 0.9
+        elif action in ["support", "sales", "complaint"]:
+            reward, score = 0.5, 0.5
+        else:
+            reward, score = 0.2, 0.2
 
-    if action == correct:
-        reward = 0.8
-        score = 0.9
-    elif action in ["support", "sales", "complaint"]:
-        reward = 0.5
-        score = 0.6
-    else:
-        reward = 0.2
-        score = 0.3
+        self.current += 1
+        done = self.current >= len(self.tasks)
 
-    self.current += 1
+        if not done:
+            self.email = self.tasks[self.current]
+            next_email = self.email["email"]
+        else:
+            next_email = "end"
 
-    if self.current >= len(self.tasks):
-        done = True
-        next_email = self.email["email"]   # ✅ keep last valid email
-    else:
-        done = False
-        self.email = self.tasks[self.current]
-        next_email = self.email["email"]
-
-    return {
-        "observation": Observation(next_email),
-        "reward": Reward(float(reward)),
-        "done": done,
-        "info": {"score": float(score)}
-    }
+        return {
+            "observation": Observation(next_email),
+            "reward": Reward(reward),
+            "done": done,
+            "info": {"score": float(score)}
+        }
 
     def state(self):
         return {
