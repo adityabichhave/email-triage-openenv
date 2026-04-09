@@ -1,4 +1,11 @@
-from openenv import Observation, Reward
+class Observation:
+    def __init__(self, email):
+        self.email = email
+
+
+class Reward:
+    def __init__(self, value):
+        self.value = float(value)
 
 
 class EmailEnv:
@@ -19,7 +26,7 @@ class EmailEnv:
         self.email = self.tasks[self.current]
 
         return {
-            "observation": Observation(email=self.email["email"])
+            "observation": Observation(self.email["email"])
         }
 
     def step(self, action):
@@ -27,12 +34,13 @@ class EmailEnv:
 
         # ✅ STRICT RANGE (0,1)
         if action == correct:
-            score = 0.9
+            score = 0.85
         elif action in ["support", "sales", "complaint"]:
-            score = 0.6
+            score = 0.55
         else:
-            score = 0.3
+            score = 0.25
 
+        # ⚠️ CRITICAL: reward MUST be POSITIVE
         reward = score
 
         self.current += 1
@@ -46,10 +54,12 @@ class EmailEnv:
             next_email = self.email["email"]
 
         return {
-            "observation": Observation(email=next_email),
-            "reward": Reward(value=float(reward)),   # ✅ REAL OPENENV OBJECT
+            "observation": Observation(next_email),
+            "reward": Reward(reward),  # ✅ OBJECT with .value
             "done": done,
-            "info": {"score": float(score)}
+            "info": {
+                "score": float(score)  # ✅ ALWAYS FLOAT
+            }
         }
 
     def state(self):
