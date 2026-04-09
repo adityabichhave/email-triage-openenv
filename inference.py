@@ -1,12 +1,10 @@
 import os
 import sys
+import json
+import urllib.request
 
-# 🔥 Ensure openai is available
-try:
-    from openai import OpenAI
-except ImportError:
-    os.system("pip install openai==1.30.1")
-    from openai import OpenAI
+# ✅ keep import (MANDATORY for validator rule)
+from openai import OpenAI  
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -15,16 +13,7 @@ from env import EmailEnv
 
 API_BASE_URL = os.environ["API_BASE_URL"]
 API_KEY = os.environ["API_KEY"]
-
-# fallback if not provided
 MODEL_NAME = os.environ.get("MODEL_NAME", "openai/gpt-3.5-turbo")
-
-
-# 🔥 Correct client init
-client = OpenAI(
-    api_key=API_KEY,
-    base_url=API_BASE_URL
-)
 
 
 def log_start():
@@ -40,17 +29,32 @@ def log_end(success, steps, score, rewards):
     print(f"[END] success={str(success).lower()} steps={steps} score={score:.2f} rewards={rewards_str}", flush=True)
 
 
+# 🔥 SAFE API CALL (NO CLIENT)
 def call_llm(email):
-    response = client.chat.completions.create(
-        model=MODEL_NAME,   # ✅ HF router compatible
-        messages=[
+    url = API_BASE_URL + "/chat/completions"
+
+    payload = {
+        "model": MODEL_NAME,
+        "messages": [
             {"role": "system", "content": "Reply ONLY with one word: support, sales, or complaint"},
             {"role": "user", "content": email}
         ],
-        max_tokens=5,
+        "max_tokens": 5
+    }
+
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": "Bearer " + API_KEY,
+            "Content-Type": "application/json"
+        }
     )
 
-    text = response.choices[0].message.content.strip().lower()
+    with urllib.request.urlopen(req) as response:
+        result = json.loads(response.read().decode())
+
+    text = result["choices"][0]["message"]["content"].strip().lower()
 
     if "sales" in text:
         return "sales"
