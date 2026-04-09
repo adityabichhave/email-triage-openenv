@@ -32,16 +32,16 @@ class EmailEnv:
     def step(self, action):
         correct = self.email["label"]
 
-        # ✅ STRICT RANGE (0,1)
+        # ✅ STRICT (0,1)
         if action == correct:
-            score = 0.85
+            reward = 0.7
+            score = 0.9
         elif action in ["support", "sales", "complaint"]:
-            score = 0.55
+            reward = 0.5
+            score = 0.6
         else:
-            score = 0.25
-
-        # ⚠️ CRITICAL: reward MUST be POSITIVE
-        reward = score
+            reward = 0.3
+            score = 0.4
 
         self.current += 1
 
@@ -54,12 +54,10 @@ class EmailEnv:
             next_email = self.email["email"]
 
         return {
-            "observation": Observation(next_email),
-            "reward": Reward(reward),  # ✅ OBJECT with .value
+            "observation": Observation(next_email),   # ✅ OBJECT
+            "reward": Reward(reward),                 # ✅ OBJECT
             "done": done,
-            "info": {
-                "score": float(score)  # ✅ ALWAYS FLOAT
-            }
+            "info": {"score": float(score)}           # ✅ FLOAT
         }
 
     def state(self):
