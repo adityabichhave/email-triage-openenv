@@ -1,91 +1,68 @@
-import os
-import sys
-import json
-import urllib.request
+class Observation:
+    def __init__(self, email):
+        self.email = email
 
-# Ensure imports work regardless of working directory
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from email_env import EmailEnv
+class Reward:
+    def __init__(self, value):
+        self.value = float(value)
 
-# Environment variables provided by Meta/Hugging Face LiteLLM Proxy
-API_BASE_URL = os.environ.get("API_BASE_URL", "").rstrip("/")
-API_KEY = os.environ.get("API_KEY", "")
-MODEL_NAME = os.environ.get("MODEL_NAME", "")
+class EmailEnv:
+    def __init__(self):
+        self.tasks = [
+            {"email": "My order is delayed, please help.", "label": "support"},
+            {"email": "I want to buy your product.", "label": "sales"},
+            {"email": "I received a damaged item, can I get a replacement?", "label": "complaint"},
+            {"email": "Can you share invoice for my purchase?", "label": "support"},
+            {"email": "Can you give me pricing for bulk orders?", "label": "sales"},
+            {"email": "I want to return my order and get refund.", "label": "complaint"}
+        ]
+        self.current = 0
+        self.email = self.tasks[0]
 
-def log_start():
-    print("[START] task=email_triage env=openenv model=llm", flush=True)
+    def reset(self):
+        self.current = 0
+        self.email = self.tasks[self.current]
+        return {
+            "observation": Observation(self.email["email"]),
+            "reward": Reward(0.0),
+            "done": False,
+            "info": {"score": 0.05}
+        }
 
-def log_step(step, action, reward, done):
-    print(f"[STEP] step={step} action={action} reward={reward:.2f} done={str(done).lower()} error=null", flush=True)
+    def step(self, action):
+        # Prevent out of bounds
+        if self.current >= len(self.tasks):
+            return {
+                "observation": Observation("END"),
+                "reward": Reward(0.0),
+                "done": True,
+                "info": {"score": 0.5}
+            }
 
-def log_end(success, steps, score, rewards):
-    rewards_str = ",".join(f"{r:.2f}" for r in rewards)
-    print(f"[END] success={str(success).lower()} steps={steps} score={score:.2f} rewards={rewards_str}", flush=True)
+        correct = self.email["label"]
+        # Use values strictly between 0 and 1
+        if action == correct:
+            reward, score = 0.90, 0.95
+        elif action in ["support", "sales", "complaint"]:
+            reward, score = 0.40, 0.45
+        else:
+            reward, score = 0.10, 0.15
 
-def call_llm(text):
-    # This URL construction is required to hit the LiteLLM Proxy
-    url = f"{API_BASE_URL}/chat/completions"
-    headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
-    payload = {
-        "model": MODEL_NAME,
-        "messages": [
-            {"role": "system", "content": "Reply with one word: support, sales, or complaint."},
-            {"role": "user", "content": text}
-        ],
-        "temperature": 0
-    }
-    try:
-        req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers)
-        with urllib.request.urlopen(req, timeout=10) as response:
-            res = json.loads(response.read().decode())
-            content = res["choices"][0]["message"]["content"].strip().lower()
-            for choice in ["support", "sales", "complaint"]:
-                if choice in content: return choice
-    except:
-        pass
-    return "support"
+        self.current += 1
+        done = self.current >= len(self.tasks)
+        
+        if not done:
+            self.email = self.tasks[self.current]
+            next_email = self.email["email"]
+        else:
+            next_email = "FINISHED"
 
-def main():
-    log_start() # Step 1: Log start immediately
-    
-    rewards, steps, score, success = [], 0, 0.0, False
-    
-    try:
-        env = EmailEnv()
-        res = env.reset()
-        current_obs = res["observation"]
+        return {
+            "observation": Observation(next_email),
+            "reward": Reward(float(reward)),
+            "done": done,
+            "info": {"score": float(score)}
+        }
 
-        # Loop through tasks (env has 6 tasks)
-        for i in range(1, 11):
-            action = call_llm(current_obs.email)
-            
-            result = env.step(action)
-            
-            reward = float(result["reward"].value)
-            done = bool(result["done"])
-            
-            rewards.append(reward)
-            steps = i
-            
-            # Step 2: Log step with reward and done status
-            log_step(i, action, reward, done)
-
-            if done:
-                break
-            
-            current_obs = result["observation"]
-
-        # Step 3: Calculate final metrics
-        if rewards:
-            score = sum(rewards) / len(rewards)
-            success = score >= 0.4 
-
-    except Exception as e:
-        # Fallback log to keep validator happy
-        print(f"[STEP] step={steps+1} action=none reward=0.0 done=true error=exception", flush=True)
-    finally:
-        # Step 4: Final log
-        log_end(success, steps, score, rewards)
-
-if __name__ == "__main__":
-    main()
+    def state(self):
+        return {"current_index": self.current, "total_tasks": len(self.tasks)}
