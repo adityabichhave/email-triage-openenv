@@ -1,18 +1,13 @@
 import os
 import sys
-
-from openai import OpenAI
+import requests
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from env import EmailEnv
 
-
-# ✅ Setup client using THEIR variables
-client = OpenAI(
-    base_url=os.environ.get("API_BASE_URL"),
-    api_key=os.environ.get("API_KEY"),
-)
+API_BASE_URL = os.environ.get("API_BASE_URL")
+API_KEY = os.environ.get("API_KEY")
 
 
 def log_start():
@@ -30,16 +25,25 @@ def log_end(success, steps, score, rewards):
 
 def get_action(email):
     try:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
+        url = f"{API_BASE_URL}/chat/completions"
+
+        headers = {
+            "Authorization": f"Bearer {API_KEY}",
+            "Content-Type": "application/json"
+        }
+
+        data = {
+            "model": "gpt-3.5-turbo",
+            "messages": [
                 {"role": "system", "content": "Classify email into support, sales, or complaint"},
                 {"role": "user", "content": email}
             ],
-            max_tokens=10,
-        )
+            "max_tokens": 10
+        }
 
-        output = response.choices[0].message.content.lower()
+        response = requests.post(url, headers=headers, json=data)
+
+        output = response.json()["choices"][0]["message"]["content"].lower()
 
         if "sales" in output:
             return "sales"
