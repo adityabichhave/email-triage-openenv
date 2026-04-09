@@ -58,15 +58,15 @@ class EmailEnv:
 
         correct = self.email["label"]
 
-if action.label == correct:
-    reward = 0.8
-    score = 0.9
-elif action.label in ["support", "sales", "complaint"]:
-    reward = 0.2
-    score = 0.5
-else:
-    reward = -0.5
-    score = 0.1
+        if action.label == correct:
+            reward = 0.8
+            score = 0.9
+        elif action.label in ["support", "sales", "complaint"]:
+            reward = 0.2
+            score = 0.5
+        else:
+            reward = -0.5
+            score = 0.1
 
         self.current += 1
 
