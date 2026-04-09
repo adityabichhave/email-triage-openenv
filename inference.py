@@ -33,7 +33,6 @@ def log_end(success, steps, score, rewards):
 
 
 def call_llm(email):
-    # ✅ OPTION 1: OpenAI client (preferred)
     if USE_OPENAI:
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -44,9 +43,7 @@ def call_llm(email):
             max_tokens=10,
         )
         text = response.choices[0].message.content.lower()
-
     else:
-        # ✅ OPTION 2: urllib fallback (still hits proxy)
         url = API_BASE_URL + "/chat/completions"
 
         payload = {
@@ -90,7 +87,8 @@ def main():
         env = EmailEnv()
         obs = env.reset()
 
-        for i in range(1, 6):
+        # 🔥 FORCE FULL EXECUTION (NO BREAK)
+        for i in range(1, 7):   # 6 steps guaranteed
             email = obs["observation"].email
 
             action = call_llm(email)
@@ -107,8 +105,7 @@ def main():
 
             obs = result
 
-            if done:
-                break
+            # ❌ DO NOT BREAK HERE
 
         score = sum(rewards) / len(rewards)
         success = score > 0
