@@ -51,15 +51,18 @@ def step():
 
     result = env.step(action)
 
+    obs = result["observation"]
+    rew = result["reward"]
+
     return jsonify({
         "observation": {
-            "email": result["observation"].email
+            "email": obs.email if obs else ""
         },
         "reward": {
-            "value": result["reward"].value
+            "value": rew.value if rew else 0.0
         },
-        "done": result["done"],
-        "info": result["info"]
+        "done": result.get("done", False),
+        "info": result.get("info", {})
     })
 
 
