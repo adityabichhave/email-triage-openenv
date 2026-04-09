@@ -3,11 +3,6 @@ class Observation:
         self.email = email
 
 
-class Reward:
-    def __init__(self, value):
-        self.value = float(value)
-
-
 class EmailEnv:
     def __init__(self):
         self.tasks = [
@@ -35,7 +30,6 @@ def step(self, action):
 
     correct = self.email["label"]
 
-    # ✅ VALID RANGE
     if action == correct:
         reward = 0.8
         score = 0.9
@@ -46,23 +40,24 @@ def step(self, action):
         reward = 0.2
         score = 0.3
 
+    # ✅ MOVE UPDATE AFTER COMPUTATION
     self.current += 1
 
-    # 🔥 FIX: NEVER SEND EMPTY OBSERVATION
     if self.current >= len(self.tasks):
-        done = True
         self.current = 0
-        self.email = self.tasks[self.current]
+        done = False
     else:
         done = False
-        self.email = self.tasks[self.current]
 
-return {
-    "observation": Observation(self.email["email"]),
-    "reward": {"value": float(reward)},   # ✅ FIXED
-    "done": done,
-    "info": {"score": float(score)}
-}
+    # 🔥 CRITICAL: ALWAYS UPDATE EMAIL AFTER CURRENT IS FINAL
+    self.email = self.tasks[self.current]
+
+    return {
+        "observation": Observation(self.email["email"]),
+        "reward": Reward(float(reward)),
+        "done": done,
+        "info": {"score": float(score)}
+    }
 
     def state(self):
         return {
