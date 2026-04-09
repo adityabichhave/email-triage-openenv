@@ -1,14 +1,21 @@
 import os
 import sys
-import json
-import urllib.request
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from env import EmailEnv
+from openai import OpenAI
 
-API_BASE_URL = os.environ.get("API_BASE_URL")
-API_KEY = os.environ.get("API_KEY")
+
+API_BASE_URL = os.environ["API_BASE_URL"]
+API_KEY = os.environ["API_KEY"]
+MODEL_NAME = os.environ["MODEL_NAME"]
+
+
+client = OpenAI(
+    base_url=API_BASE_URL,
+    api_key=API_KEY
+)
 
 
 def log_start():
@@ -24,32 +31,17 @@ def log_end(success, steps, score, rewards):
     print(f"[END] success={str(success).lower()} steps={steps} score={score:.2f} rewards={rewards_str}", flush=True)
 
 
-# ✅ ONLY urllib (no openai import)
 def call_llm(email):
-    url = API_BASE_URL + "/chat/completions"
-
-    payload = {
-        model=os.environ["MODEL_NAME"]
-        "messages": [
-            {"role": "system", "content": "Reply ONLY with one word: support, sales, or complaint. No explanation."},
+    response = client.chat.completions.create(
+        model=MODEL_NAME,   # ✅ FIXED (with comma)
+        messages=[
+            {"role": "system", "content": "Reply ONLY with one word: support, sales, or complaint"},
             {"role": "user", "content": email}
         ],
-        "max_tokens": 10
-    }
-
-    req = urllib.request.Request(
-        url,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Authorization": "Bearer " + API_KEY,
-            "Content-Type": "application/json"
-        }
+        max_tokens=5,
     )
 
-    with urllib.request.urlopen(req) as response:
-        result = json.loads(response.read().decode())
-
-    text = result["choices"][0]["message"]["content"].lower()
+    text = response.choices[0].message.content.strip().lower()
 
     if "sales" in text:
         return "sales"
@@ -69,7 +61,7 @@ def main():
         env = EmailEnv()
         obs = env.reset()
 
-        for i in range(1, 6):   # keep safe 5 steps
+        for i in range(1, 6):
             email = obs["observation"].email
 
             action = call_llm(email)
