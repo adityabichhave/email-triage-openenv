@@ -1,30 +1,28 @@
 import os
 import sys
-import json
-from openai import OpenAI
 
-# 1. IMMEDIATE LOGGING
-# We log [START] before anything else to satisfy the parser
+# 1. Start logging immediately so the validator sees progress
 print("[START] task=email_triage env=openenv model=llm", flush=True)
 
-# 2. CONFIGURATION
-# LiteLLM Proxy requires the exact BASE_URL and MODEL_NAME from the env
+# 2. Resilient Import Check
+try:
+    from openai import OpenAI
+except ImportError:
+    print("[STEP] step=0 action=none reward=0.00 done=true error=ModuleNotFoundError_openai", flush=True)
+    print("[END] success=false steps=0 score=0.00 rewards=0.00", flush=True)
+    # Exiting with 0 prevents the "Non-zero status code" crash 
+    # and allows you to read the error in the "Graded" logs instead.
+    sys.exit(0) 
+
+# --- Rest of your code ---
 API_BASE_URL = os.environ.get("API_BASE_URL", "").rstrip("/")
 API_KEY = os.environ.get("API_KEY", "")
 MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-3.5-turbo")
 
-# Ensure the base_url is exactly what the proxy expects
-# If the env provides 'http://proxy.url', OpenAI client needs 'http://proxy.url/v1'
-if not API_BASE_URL.endswith("/v1") and "llm-proxy" in API_BASE_URL:
-    base_url = f"{API_BASE_URL}/v1"
-else:
-    base_url = API_BASE_URL
+# LiteLLM Proxy formatting
+base_url = f"{API_BASE_URL}/v1" if not API_BASE_URL.endswith("/v1") else API_BASE_URL
 
-# Initialize Client
-client = OpenAI(
-    api_key=API_KEY,
-    base_url=base_url
-)
+client = OpenAI(api_key=API_KEY, base_url=base_url)
 
 # 3. DYNAMIC IMPORT
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
