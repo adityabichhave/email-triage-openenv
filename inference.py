@@ -1,21 +1,17 @@
 import os
 import sys
-import json
-import urllib.request
-import importlib.util
+from openai import OpenAI
+from env.email_env import EmailEnv
 
-# --- FIX: Import from the 'env' folder ---
-def get_env_class():
-    base_path = os.path.dirname(os.path.abspath(__file__))
-    env_path = os.path.join(base_path, "env", "email_env.py")
-    spec = importlib.util.spec_from_file_location("email_env", env_path)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod.EmailEnv
+# REQUIRED ENVIRONMENT VARIABLES
+API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
+MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 
-# --- LOGGING ---
+client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
+
 def log_start():
-    print("[START] task=email_triage env=openenv model=llm", flush=True)
+    print(f"[START] task=email_triage env=openenv model={MODEL_NAME}", flush=True)
 
 def log_step(step, action, reward, done):
     print(f"[STEP] step={step} action={action} reward={reward:.2f} done={str(done).lower()} error=null", flush=True)
@@ -24,44 +20,29 @@ def log_end(success, steps, score, rewards):
     r_str = ",".join(f"{r:.2f}" for r in rewards)
     print(f"[END] success={str(success).lower()} steps={steps} score={score:.2f} rewards={r_str}", flush=True)
 
-# --- API (LiteLLM) ---
-API_BASE_URL = os.environ.get("API_BASE_URL", "").rstrip("/")
-API_KEY = os.environ.get("API_KEY", "")
-MODEL_NAME = os.environ.get("MODEL_NAME", "")
-
 def call_llm(text):
-    url = f"{API_BASE_URL}/chat/completions"
-    data = {
-        "model": MODEL_NAME,
-        "messages": [{"role": "user", "content": f"Classify: support, sales, or complaint. One word: {text}"}],
-        "temperature": 0
-    }
     try:
-        req = urllib.request.Request(url, data=json.dumps(data).encode(), 
-                                   headers={"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=10) as res:
-            resp = json.loads(res.read().decode())
-            content = resp["choices"][0]["message"]["content"].strip().lower()
-            return next((c for c in ["support", "sales", "complaint"] if c in content), "support")
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[{"role": "user", "content": f"Classify as 'support', 'sales', or 'complaint'. One word: {text}"}],
+            max_tokens=5
+        )
+        content = response.choices[0].message.content.strip().lower()
+        return next((c for c in ["support", "sales", "complaint"] if c in content), "support")
     except:
         return "support"
 
-# --- MAIN ---
 def main():
     log_start()
     rewards, steps, score, success = [], 0, 0.0, False
     
     try:
-        EmailEnv = get_env_class()
         env = EmailEnv()
         obs_packet = env.reset()
         curr_obs = obs_packet["observation"]
 
-        # Run through all 6 tasks
         for i in range(1, 11):
-            email_text = getattr(curr_obs, 'email', "")
-            action = call_llm(email_text)
-            
+            action = call_llm(curr_obs.email)
             res = env.step(action)
             
             rew_val = float(res["reward"].value)
@@ -69,7 +50,6 @@ def main():
             rewards.append(rew_val)
             steps = i
             
-            # This log MUST exist for the validator to count the task
             log_step(i, action, rew_val, is_done)
 
             if is_done:
@@ -78,10 +58,10 @@ def main():
 
         if rewards:
             score = sum(rewards) / len(rewards)
-            success = score >= 0.4
+            success = score >= 0.5
             
     except Exception as e:
-        print(f"[STEP] step={steps+1} action=none reward=0.0 done=true error={str(e).replace(' ', '_')}", flush=True)
+        pass
     finally:
         log_end(success, steps, score, rewards)
 
