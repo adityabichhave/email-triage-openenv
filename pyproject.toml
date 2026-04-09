@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Email classification environment"
 dependencies = [
     "flask",
-    "requests",
+    "openai",
     "openenv>=0.2.0"
 ]
 
