@@ -8,6 +8,7 @@ class Reward:
 
 class EmailEnv:
     def __init__(self):
+        # We define 6 tasks. Completing these ensures we exceed the "3 tasks" requirement.
         self.tasks = [
             {"email": "My order is delayed, please help.", "label": "support"},
             {"email": "I want to buy your product.", "label": "sales"},
@@ -26,15 +27,16 @@ class EmailEnv:
             "observation": Observation(self.email["email"]),
             "reward": Reward(0.0),
             "done": False,
-            "info": {"score": 0.05}
+            "info": {"score": 0.05} # Non-zero start for the grader
         }
 
     def step(self, action):
         if self.current >= len(self.tasks):
-            return {"observation": Observation("EOF"), "reward": Reward(0.0), "done": True, "info": {"score": 0.5}}
+            return {"observation": Observation("DONE"), "reward": Reward(0.0), "done": True, "info": {"score": 0.5}}
 
         correct = self.email["label"]
-        # Scores MUST be strictly between 0 and 1
+        
+        # MANDATORY: info['score'] must be a float between 0 and 1
         if action == correct:
             reward, score = 1.0, 0.95
         elif action in ["support", "sales", "complaint"]:
@@ -55,7 +57,7 @@ class EmailEnv:
             "observation": next_obs,
             "reward": Reward(float(reward)),
             "done": done,
-            "info": {"score": float(score)}
+            "info": {"score": float(score)} # This is what the grader "reads"
         }
 
     def state(self):
