@@ -1,67 +1,74 @@
 import os
 import sys
+from openai import OpenAI
 
-# 1. IMMEDIATE LOGGING - Start this before the import
+# 1. Start logging immediately
 print("[START] task=email_triage env=openenv model=llm", flush=True)
 
-# 2. IMPORT GUARD
-try:
-    from openai import OpenAI
-except ImportError:
-    # If the library is missing, we log a dummy step and exit gracefully
-    print("[STEP] step=0 action=none reward=0.00 done=true error=ModuleNotFoundError_openai", flush=True)
-    print("[END] success=false steps=0 score=0.00 rewards=0.00", flush=True)
-    sys.exit(0) # Exit with 0 so it doesn't show as a "crash"
+# 2. Extract Environment Variables
+# The validator injects these: DO NOT hardcode them.
+api_base = os.environ.get("API_BASE_URL", "").rstrip("/")
+api_key = os.environ.get("API_KEY", "")
+model_name = os.environ.get("MODEL_NAME", "gpt-3.5-turbo")
 
-# 3. PROXY CONFIGURATION
-API_BASE_URL = os.environ.get("API_BASE_URL", "").rstrip("/")
-API_KEY = os.environ.get("API_KEY", "")
-MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-3.5-turbo")
+# 3. THE CRITICAL PROXY FIX
+# OpenAI SDK v1.x expects the base_url to include the /v1 suffix.
+# LiteLLM proxies will NOT track your calls if this is missing.
+if api_base and not api_base.endswith("/v1"):
+    api_base = f"{api_base}/v1"
 
-# Ensure base_url has the /v1 suffix for the OpenAI client
-base_url = f"{API_BASE_URL}/v1" if not API_BASE_URL.endswith("/v1") else API_BASE_URL
+# Initialize the OpenAI Client
+client = OpenAI(
+    api_key=api_key,
+    base_url=api_base
+)
 
-client = OpenAI(api_key=API_KEY, base_url=base_url)
-
-# 4. LOAD LOCAL ENVIRONMENT
+# 4. Import your local environment
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from env.email_env import EmailEnv
 
 def call_llm(text):
+    """Hits the proxy using the validator's credentials."""
     try:
         response = client.chat.completions.create(
-            model=MODEL_NAME,
-            messages=[{"role": "user", "content": f"Classify: support, sales, complaint. One word: {text}"}],
+            model=model_name, # MUST use the model_name from environment
+            messages=[
+                {"role": "system", "content": "Classify: support, sales, or complaint. One word only."},
+                {"role": "user", "content": text}
+            ],
             temperature=0,
-            max_tokens=5
+            max_tokens=10
         )
         content = response.choices[0].message.content.strip().lower()
         return next((c for c in ["support", "sales", "complaint"] if c in content), "support")
-    except:
+    except Exception:
         return "support"
 
 def main():
     rewards, steps, score = [], 0, 0.0
     try:
         env = EmailEnv()
-        res = env.reset()
-        obs = res["observation"] if isinstance(res, dict) else res
+        obs_data = env.reset()
+        obs = obs_data["observation"] if isinstance(obs_data, dict) else obs_data
 
-        # Run through tasks (EmailEnv has 6)
-        for i in range(1, 7):
-            email = getattr(obs, 'email', "")
-            action = call_llm(email)
+        # Loop through tasks (Make sure you call the API for every task)
+        for i in range(1, 11):
+            email_body = getattr(obs, 'email', "")
             
-            step_res = env.step(action)
-            rew_val = float(step_res["reward"].value)
-            is_done = bool(step_res["done"])
+            # --- THIS CALL REGISTERS ON THE PROXY ---
+            action = call_llm(email_body)
+            
+            res = env.step(action)
+            rew_val = float(res["reward"].value)
+            is_done = bool(res["done"])
             
             rewards.append(rew_val)
             steps = i
             print(f"[STEP] step={i} action={action} reward={rew_val:.2f} done={str(is_done).lower()} error=null", flush=True)
 
-            if is_done: break
-            obs = step_res["observation"]
+            if is_done:
+                break
+            obs = res["observation"]
 
         score = sum(rewards) / len(rewards) if rewards else 0.0
     except Exception as e:
