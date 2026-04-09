@@ -1,21 +1,22 @@
 import os
 import sys
-
-from openai import OpenAI
+import json
+import urllib.request
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from env import EmailEnv
 
-# ✅ REQUIRED VARIABLES
-API_BASE_URL = os.getenv("API_BASE_URL")
-API_KEY = os.getenv("API_KEY")
+API_BASE_URL = os.environ.get("API_BASE_URL")
+API_KEY = os.environ.get("API_KEY")
 
-# ✅ OPENAI CLIENT (MANDATORY)
-client = OpenAI(
-    base_url=API_BASE_URL,
-    api_key=API_KEY,
-)
+# ✅ TRY OpenAI (if available)
+try:
+    from openai import OpenAI
+    client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
+    USE_OPENAI = True
+except Exception:
+    USE_OPENAI = False
 
 
 def log_start():
@@ -32,16 +33,44 @@ def log_end(success, steps, score, rewards):
 
 
 def call_llm(email):
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": "Classify email into support, sales, or complaint"},
-            {"role": "user", "content": email}
-        ],
-        max_tokens=10,
-    )
+    # ✅ OPTION 1: OpenAI client (preferred)
+    if USE_OPENAI:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "Classify email into support, sales, or complaint"},
+                {"role": "user", "content": email}
+            ],
+            max_tokens=10,
+        )
+        text = response.choices[0].message.content.lower()
 
-    text = response.choices[0].message.content.lower()
+    else:
+        # ✅ OPTION 2: urllib fallback (still hits proxy)
+        url = API_BASE_URL + "/chat/completions"
+
+        payload = {
+            "model": "gpt-3.5-turbo",
+            "messages": [
+                {"role": "system", "content": "Classify email into support, sales, or complaint"},
+                {"role": "user", "content": email}
+            ],
+            "max_tokens": 10
+        }
+
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Authorization": "Bearer " + API_KEY,
+                "Content-Type": "application/json"
+            }
+        )
+
+        with urllib.request.urlopen(req) as response:
+            result = json.loads(response.read().decode())
+
+        text = result["choices"][0]["message"]["content"].lower()
 
     if "sales" in text:
         return "sales"
@@ -54,7 +83,6 @@ def call_llm(email):
 def main():
     rewards = []
     steps = 0
-    score = 0.0
 
     log_start()
 
@@ -65,7 +93,6 @@ def main():
         for i in range(1, 6):
             email = obs["observation"].email
 
-            # ✅ REQUIRED API CALL
             action = call_llm(email)
 
             result = env.step(action)
@@ -89,6 +116,7 @@ def main():
     except Exception as e:
         print(f"[STEP] step=0 action=none reward=0.00 done=true error={str(e)}", flush=True)
         success = False
+        score = 0.0
 
     finally:
         log_end(success, steps, score, rewards)
