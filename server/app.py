@@ -10,7 +10,7 @@ from flask import Flask, request, jsonify
 
 # -------- SAFE IMPORT --------
 try:
-    from env import EmailEnv
+    from env.email_env import EmailEnv   # ✅ FIX IMPORT PATH
     env = EmailEnv()
     print("✅ ENV LOADED")
 except Exception as e:
