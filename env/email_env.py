@@ -29,36 +29,38 @@ class EmailEnv:
             "observation": Observation(self.email["email"])
         }
 
-    def step(self, action):   # ✅ MUST be inside class
-        correct = self.email["label"]
+def step(self, action):
+    if self.email is None:
+        self.reset()
 
-        if action == correct:
-            reward_val = 0.7
-            score_val = 0.9
-        elif action in ["support", "sales", "complaint"]:
-            reward_val = 0.5
-            score_val = 0.6
-        else:
-            reward_val = 0.3
-            score_val = 0.4
+    correct = self.email["label"]
 
+    if action == correct:
+        reward_val = 0.7
+        score_val = 0.9
+    elif action in ["support", "sales", "complaint"]:
+        reward_val = 0.5
+        score_val = 0.6
+    else:
+        reward_val = 0.3
+        score_val = 0.4
 
-        self.current += 1
+    self.current += 1
 
-        if self.current >= len(self.tasks):
-            done = True
-            next_email = ""
-        else:
-            done = False
-            self.email = self.tasks[self.current]
-            next_email = self.email["email"]
+    if self.current >= len(self.tasks):
+        done = True
+        next_email = None
+    else:
+        done = False
+        self.email = self.tasks[self.current]
+        next_email = self.email["email"]
 
-        return {
-            "observation": Observation(next_email),
-            "reward": Reward(reward_val),
-            "done": done,
-            "info": {"score": float(score_val)}
-        }
+    return {
+        "observation": Observation(next_email if next_email else ""),
+        "reward": Reward(float(reward_val)),
+        "done": done,
+        "info": {"score": float(score_val)}
+    }
 
     def state(self):
         return {
