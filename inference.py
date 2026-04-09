@@ -95,7 +95,7 @@ def main():
 
             result = env.step(action)
 
-            reward = result["reward"].value
+            reward = result["reward"]["value"]
             done = result["done"]
 
             rewards.append(reward)
