@@ -29,39 +29,35 @@ class EmailEnv:
             "observation": Observation(self.email["email"])
         }
 
-def step(self, action):
-    if self.email is None:
-        self.reset()
+    def step(self, action):
+        correct = self.email["label"]
 
-    correct = self.email["label"]
+        # ✅ STRICT VALID RANGE
+        if action == correct:
+            reward = 0.8
+            score = 0.9
+        elif action in ["support", "sales", "complaint"]:
+            reward = 0.5
+            score = 0.6
+        else:
+            reward = 0.2
+            score = 0.3
 
-    if action == correct:
-        reward_val = 0.7
-        score_val = 0.9
-    elif action in ["support", "sales", "complaint"]:
-        reward_val = 0.5
-        score_val = 0.6
-    else:
-        reward_val = 0.3
-        score_val = 0.4
+        self.current += 1
 
-    self.current += 1
+        # ✅ STOP NATURALLY (NO RESET, NO LOOP)
+        if self.current >= len(self.tasks):
+            done = True
+        else:
+            done = False
+            self.email = self.tasks[self.current]
 
-    # 🔥 CRITICAL FIX
-    if self.current >= len(self.tasks):
-        self.current = 0
-        self.email = self.tasks[self.current]
-        done = False   # ✅ NEVER TRUE
-    else:
-        done = False
-        self.email = self.tasks[self.current]
-
-    return {
-        "observation": Observation(self.email["email"]),
-        "reward": Reward(float(reward_val)),
-        "done": done,
-        "info": {"score": float(score_val)}
-    }
+        return {
+            "observation": Observation(self.email["email"] if not done else ""),
+            "reward": Reward(reward),
+            "done": done,
+            "info": {"score": score}
+        }
 
     def state(self):
         return {
