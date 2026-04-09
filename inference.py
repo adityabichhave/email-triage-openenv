@@ -1,14 +1,21 @@
 import os
 import sys
-import json
-import urllib.request
+
+from openai import OpenAI
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from env import EmailEnv
 
-API_BASE_URL = os.environ["API_BASE_URL"]
-API_KEY = os.environ["API_KEY"]
+# ✅ REQUIRED VARIABLES
+API_BASE_URL = os.getenv("API_BASE_URL")
+API_KEY = os.getenv("API_KEY")
+
+# ✅ OPENAI CLIENT (MANDATORY)
+client = OpenAI(
+    base_url=API_BASE_URL,
+    api_key=API_KEY,
+)
 
 
 def log_start():
@@ -24,33 +31,17 @@ def log_end(success, steps, score, rewards):
     print(f"[END] success={str(success).lower()} steps={steps} score={score:.2f} rewards={rewards_str}", flush=True)
 
 
-# ✅ FORCE REAL API CALL (NO SILENT FAIL)
 def call_llm(email):
-    url = API_BASE_URL + "/chat/completions"
-
-    payload = {
-        "model": "gpt-3.5-turbo",
-        "messages": [
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
             {"role": "system", "content": "Classify email into support, sales, or complaint"},
             {"role": "user", "content": email}
         ],
-        "max_tokens": 10
-    }
-
-    req = urllib.request.Request(
-        url,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Authorization": "Bearer " + API_KEY,
-            "Content-Type": "application/json"
-        }
+        max_tokens=10,
     )
 
-    # ❗ MUST EXECUTE — no try/except here
-    with urllib.request.urlopen(req) as response:
-        result = json.loads(response.read().decode())
-
-    text = result["choices"][0]["message"]["content"].lower()
+    text = response.choices[0].message.content.lower()
 
     if "sales" in text:
         return "sales"
@@ -74,7 +65,7 @@ def main():
         for i in range(1, 6):
             email = obs["observation"].email
 
-            # 🔥 THIS IS THE KEY (MANDATORY)
+            # ✅ REQUIRED API CALL
             action = call_llm(email)
 
             result = env.step(action)
@@ -93,7 +84,6 @@ def main():
                 break
 
         score = sum(rewards) / len(rewards)
-
         success = score > 0
 
     except Exception as e:
