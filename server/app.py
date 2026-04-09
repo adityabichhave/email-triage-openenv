@@ -3,7 +3,7 @@ print("🔥 APP STARTING...")
 import sys
 import os
 
-# ✅ FIX PATH (VERY IMPORTANT)
+# ✅ FIX PATH
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from flask import Flask, request, jsonify
@@ -30,7 +30,7 @@ def reset():
 
     return jsonify({
         "observation": {
-            "email": result["observation"].email
+            "email": result["observation"]["email"]
         },
         "reward": {
             "value": 0.0
@@ -53,10 +53,10 @@ def step():
 
     return jsonify({
         "observation": {
-            "email": result["observation"].email
+            "email": result["observation"]["email"]
         },
         "reward": {
-            "value": result["reward"].value
+            "value": result["reward"]["value"]
         },
         "done": result["done"],
         "info": result["info"]
@@ -78,12 +78,12 @@ def home():
     return "OK"
 
 
-# ✅ REQUIRED MAIN FUNCTION
+# -------- MAIN --------
 def main():
     print("🚀 RUNNING FLASK...")
     app.run(host="0.0.0.0", port=7860)
 
 
-# ✅ ENTRYPOINT
+# -------- ENTRYPOINT --------
 if __name__ == "__main__":
     main()
