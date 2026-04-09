@@ -70,22 +70,25 @@ def main():
         env = EmailEnv()
         obs = env.reset()
 
-        for i in range(1, 6):
-            email = obs["observation"].email
+for i in range(1, 10):
+    email = obs["observation"].email
 
-            action = call_llm(email)
+    action = call_llm(email)
 
-            result = env.step(action)
+    result = env.step(action)
 
-            reward = result["reward"].value
-            done = result["done"]
+    reward = result["reward"].value
+    done = result["done"]
 
-            rewards.append(reward)
-            steps = i
+    rewards.append(reward)
+    steps = i
 
-            log_step(i, action, reward, done)
+    log_step(i, action, reward, done)
 
-            obs = result
+    if done:
+        break
+
+    obs = result
 
         score = sum(rewards) / len(rewards)
         success = score > 0
