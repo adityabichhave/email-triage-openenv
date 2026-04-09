@@ -4,16 +4,10 @@ import json
 import urllib.request
 import importlib.util
 
-# --- PATH FIX: Find env/email_env.py relative to this script ---
+# --- FIX: Import from the 'env' folder ---
 def get_env_class():
     base_path = os.path.dirname(os.path.abspath(__file__))
-    # Look specifically in the 'env' folder as per your structure
     env_path = os.path.join(base_path, "env", "email_env.py")
-    
-    if not os.path.exists(env_path):
-        # Fallback to root if not in env/
-        env_path = os.path.join(base_path, "email_env.py")
-
     spec = importlib.util.spec_from_file_location("email_env", env_path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -30,7 +24,7 @@ def log_end(success, steps, score, rewards):
     r_str = ",".join(f"{r:.2f}" for r in rewards)
     print(f"[END] success={str(success).lower()} steps={steps} score={score:.2f} rewards={r_str}", flush=True)
 
-# --- API ---
+# --- API (LiteLLM) ---
 API_BASE_URL = os.environ.get("API_BASE_URL", "").rstrip("/")
 API_KEY = os.environ.get("API_KEY", "")
 MODEL_NAME = os.environ.get("MODEL_NAME", "")
@@ -39,7 +33,7 @@ def call_llm(text):
     url = f"{API_BASE_URL}/chat/completions"
     data = {
         "model": MODEL_NAME,
-        "messages": [{"role": "user", "content": f"Classify email: support, sales, or complaint. One word: {text}"}],
+        "messages": [{"role": "user", "content": f"Classify: support, sales, or complaint. One word: {text}"}],
         "temperature": 0
     }
     try:
@@ -63,16 +57,19 @@ def main():
         obs_packet = env.reset()
         curr_obs = obs_packet["observation"]
 
-        for i in range(1, 10):
+        # Run through all 6 tasks
+        for i in range(1, 11):
             email_text = getattr(curr_obs, 'email', "")
             action = call_llm(email_text)
             
             res = env.step(action)
+            
             rew_val = float(res["reward"].value)
             is_done = bool(res["done"])
-            
             rewards.append(rew_val)
             steps = i
+            
+            # This log MUST exist for the validator to count the task
             log_step(i, action, rew_val, is_done)
 
             if is_done:
