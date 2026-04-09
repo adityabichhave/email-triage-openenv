@@ -12,6 +12,7 @@ class Reward:
     def __init__(self, value):
         self.value = value
 
+
 # ----------- Agent Logic -----------
 
 def agent(email: str) -> str:
@@ -19,10 +20,8 @@ def agent(email: str) -> str:
 
     if "buy" in email or "price" in email or "pricing" in email or "order" in email:
         return "sales"
-
     elif "refund" in email or "return" in email or "damaged" in email or "issue" in email:
         return "complaint"
-
     else:
         return "support"
 
@@ -43,42 +42,42 @@ class EmailEnv:
         self.email = None
 
     def reset(self):
-    self.current = 0
-    self.email = self.tasks[self.current]
-
-    return {
-        "observation": {"email": self.email["email"]}
-    }
-
-   def step(self, action):
-    correct = self.email["label"]
-
-    if action == correct:
-        reward = 0.8
-        score = 0.9
-    elif action in ["support", "sales", "complaint"]:
-        reward = 0.2
-        score = 0.5
-    else:
-        reward = -0.5
-        score = 0.1
-
-    self.current += 1
-
-    if self.current >= len(self.tasks):
-        done = True
-        next_email = None
-    else:
-        done = False
+        self.current = 0
         self.email = self.tasks[self.current]
-        next_email = self.email["email"]
 
-    return {
-        "observation": {"email": next_email},
-        "reward": {"value": reward},
-        "done": done,
-        "info": {"score": score}
-    }
+        return {
+            "observation": {"email": self.email["email"]}
+        }
+
+    def step(self, action):
+        correct = self.email["label"]
+
+        if action == correct:
+            reward = 0.8
+            score = 0.9
+        elif action in ["support", "sales", "complaint"]:
+            reward = 0.2
+            score = 0.5
+        else:
+            reward = -0.5
+            score = 0.1
+
+        self.current += 1
+
+        if self.current >= len(self.tasks):
+            done = True
+            next_email = None
+        else:
+            done = False
+            self.email = self.tasks[self.current]
+            next_email = self.email["email"]
+
+        return {
+            "observation": {"email": next_email},
+            "reward": {"value": reward},
+            "done": done,
+            "info": {"score": score}
+        }
 
     def state(self):
         return {
