@@ -9,13 +9,11 @@ endpoints:
   step: POST /step
   state: GET /state
 
+# 🔥 THIS PART IS CRITICAL
 tasks:
   - id: email
-    description: Email classification task
   - id: sentiment
-    description: Sentiment classification task
   - id: priority
-    description: Priority classification task
 
 observation_space:
   type: object
