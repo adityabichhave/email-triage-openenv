@@ -30,23 +30,29 @@ def call_llm(text):
         response = client.chat.completions.create(
             model=model_name,
             messages=[
-                {"role": "system", "content": "Reply ONLY with one word: support, sales, or complaint"},
+                {"role": "system", "content": "Classify the email into one word depending on context:\n- support, sales, complaint\n- positive, negative\n- high, low"}
                 {"role": "user", "content": text}
             ],
             max_tokens=5,
             temperature=0
         )
 
-        content = response.choices[0].message.content.lower()
+content = response.choices[0].message.content.lower()
 
-        if "sales" in content:
-            return "sales"
-        if "complaint" in content:
-            return "complaint"
-        return "support"
+# Category
+if "sales" in content: return "sales"
+if "complaint" in content: return "complaint"
+if "support" in content: return "support"
 
-    except Exception:
-        return "support"
+# Sentiment
+if "positive" in content: return "positive"
+if "negative" in content: return "negative"
+
+# Priority
+if "high" in content: return "high"
+if "low" in content: return "low"
+
+return "support"
 
 
 def main():
