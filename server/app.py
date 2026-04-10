@@ -1,7 +1,7 @@
 import sys
 import os
 
-# 🔥 FIX IMPORT PATH
+# Fix import path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from flask import Flask, request, jsonify
@@ -12,7 +12,7 @@ from env.priority_env import PriorityEnv
 
 app = Flask(__name__)
 
-# 🔥 REGISTER ALL TASKS HERE
+# Register all tasks
 ENV_MAP = {
     "email": EmailEnv,
     "sentiment": SentimentEnv,
@@ -40,7 +40,7 @@ def home():
 @app.route("/reset", methods=["POST"])
 def reset():
     try:
-        data = request.get_json(force=True) or {}
+        data = request.get_json(silent=True) or {}
         task = data.get("task", "email")
 
         env = get_env(task)
@@ -51,7 +51,10 @@ def reset():
             "observation": {"email": obs.email},
             "reward": {"value": float(res["reward"].value)},
             "done": bool(res["done"]),
-            "info": {"score": float(res["reward"].value), "task": task}
+            "info": {
+                "score": float(res["reward"].value),
+                "task": task
+            }
         })
 
     except Exception as e:
@@ -61,7 +64,7 @@ def reset():
 @app.route("/step", methods=["POST"])
 def step():
     try:
-        data = request.get_json(force=True)
+        data = request.get_json(silent=True) or {}
         task = data.get("task", "email")
         action = data.get("action", "support")
 
