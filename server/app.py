@@ -12,10 +12,9 @@ from env.priority_env import PriorityEnv
 
 app = Flask(__name__)
 
-# Create env instances
-email_env = EmailEnv()
-sentiment_env = SentimentEnv()
-priority_env = PriorityEnv()
+# Initialize all envs
+envs = [EmailEnv(), SentimentEnv(), PriorityEnv()]
+current_env_index = 0
 
 
 @app.route("/", methods=["GET"])
@@ -23,116 +22,75 @@ def home():
     return "OK"
 
 
-# =========================
-# TASK 1: EMAIL
-# =========================
-@app.route("/email/reset", methods=["POST"])
-def email_reset():
-    res = email_env.reset()
-    obs = res["observation"]
+@app.route("/reset", methods=["POST"])
+def reset():
+    global current_env_index
 
-    return jsonify({
-        "observation": {"email": obs.email},
-        "reward": {"value": float(res["reward"].value)},
-        "done": bool(res["done"]),
-        "info": {"score": float(res["reward"].value)}
-    })
+    try:
+        current_env_index = 0
+        env = envs[current_env_index]
 
+        res = env.reset()
+        obs = res["observation"]
 
-@app.route("/email/step", methods=["POST"])
-def email_step():
-    data = request.get_json(silent=True) or {}
-    action = data.get("action", "support")
+        return jsonify({
+            "observation": {"email": obs.email},
+            "reward": {"value": float(res["reward"].value)},
+            "done": False,
+            "info": {"score": float(res["reward"].value)}
+        })
 
-    result = email_env.step(action)
-    obs = result["observation"]
-
-    return jsonify({
-        "observation": {"email": obs.email},
-        "reward": {"value": float(result["reward"].value)},
-        "done": bool(result["done"]),
-        "info": {"score": float(result["reward"].value)}
-    })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
-# =========================
-# TASK 2: SENTIMENT
-# =========================
-@app.route("/sentiment/reset", methods=["POST"])
-def sentiment_reset():
-    res = sentiment_env.reset()
-    obs = res["observation"]
+@app.route("/step", methods=["POST"])
+def step():
+    global current_env_index
 
-    return jsonify({
-        "observation": {"email": obs.email},
-        "reward": {"value": float(res["reward"].value)},
-        "done": bool(res["done"]),
-        "info": {"score": float(res["reward"].value)}
-    })
+    try:
+        data = request.get_json(silent=True) or {}
+        action = data.get("action", "support")
 
+        env = envs[current_env_index]
+        result = env.step(action)
 
-@app.route("/sentiment/step", methods=["POST"])
-def sentiment_step():
-    data = request.get_json(silent=True) or {}
-    action = data.get("action", "positive")
+        obs = result["observation"]
+        done = result["done"]
 
-    result = sentiment_env.step(action)
-    obs = result["observation"]
+        # If current env finished → move to next env
+        if done:
+            current_env_index += 1
 
-    return jsonify({
-        "observation": {"email": obs.email},
-        "reward": {"value": float(result["reward"].value)},
-        "done": bool(result["done"]),
-        "info": {"score": float(result["reward"].value)}
-    })
+            if current_env_index < len(envs):
+                next_env = envs[current_env_index]
+                next_res = next_env.reset()
+                obs = next_res["observation"]
+                done = False
 
+        return jsonify({
+            "observation": {"email": obs.email},
+            "reward": {"value": float(result["reward"].value)},
+            "done": bool(done),
+            "info": {"score": float(result["reward"].value)}
+        })
 
-# =========================
-# TASK 3: PRIORITY
-# =========================
-@app.route("/priority/reset", methods=["POST"])
-def priority_reset():
-    res = priority_env.reset()
-    obs = res["observation"]
-
-    return jsonify({
-        "observation": {"email": obs.email},
-        "reward": {"value": float(res["reward"].value)},
-        "done": bool(res["done"]),
-        "info": {"score": float(res["reward"].value)}
-    })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
-@app.route("/priority/step", methods=["POST"])
-def priority_step():
-    data = request.get_json(silent=True) or {}
-    action = data.get("action", "low")
-
-    result = priority_env.step(action)
-    obs = result["observation"]
-
-    return jsonify({
-        "observation": {"email": obs.email},
-        "reward": {"value": float(result["reward"].value)},
-        "done": bool(result["done"]),
-        "info": {"score": float(result["reward"].value)}
-    })
-
-
-# =========================
-# STATE (OPTIONAL)
-# =========================
 @app.route("/state", methods=["GET"])
 def state():
-    return jsonify({
-        "email": email_env.state(),
-        "sentiment": sentiment_env.state(),
-        "priority": priority_env.state()
-    })
+    try:
+        return jsonify({
+            "current_env_index": current_env_index
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 def main():
-    print("🔥 3-TASK SERVER RUNNING", flush=True)
+    print("🔥 MULTI-TASK ROTATING ENV SERVER", flush=True)
     app.run(host="0.0.0.0", port=7860, debug=False)
 
 
