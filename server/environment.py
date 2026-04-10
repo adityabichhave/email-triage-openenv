@@ -1,6 +1,6 @@
 import random
 from typing import Dict
-from ..models import EmailAction, EmailObservation, EmailState
+from models import EmailAction, EmailObservation, EmailState
 
 
 class MultiTaskEnv:
