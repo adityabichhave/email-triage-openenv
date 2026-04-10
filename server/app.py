@@ -1,104 +1,61 @@
-print("🔥 APP STARTING...")
+from openenv.core.env_server import Action, Observation, State
 
-import sys
-import os
-from flask import Flask, request, jsonify
 
-# PATH FIX
-current_dir = os.path.dirname(os.path.abspath(__file__))
-root_path = os.path.dirname(current_dir)
-if root_path not in sys.path:
-    sys.path.append(root_path)
+class TaskAction(Action):
+    label: str
 
-# IMPORT ENVS
-from env.email_env import EmailEnv
-from env.sentiment_env import SentimentEnv
-from env.priority_env import PriorityEnv
 
-env_map = {
-    "email": EmailEnv(),
-    "sentiment": SentimentEnv(),
-    "priority": PriorityEnv()
-}
+class TaskObservation(Observation):
+    email: str
 
-task_keys = list(env_map.keys())
-task_index = 0
-current_env = env_map[task_keys[0]]
 
-print("✅ ENV LOADED SUCCESSFULLY")
+class TaskState(State):
+    pass
 
-app = Flask(__name__)
 
-# ROOT
-@app.route("/", methods=["GET"])
-def home():
-    return "OK"
+class MultiTaskEnv:
+    def __init__(self):
+        # 🔥 3 DIFFERENT TASK TYPES
+        self.tasks = [
+            ("I cannot login", "support"),
+            ("I love this product", "positive"),
+            ("URGENT issue", "high"),
+        ]
+        self.i = 0
+        self._state = TaskState()
 
-# RESET
-@app.route("/reset", methods=["POST"])
-def reset():
-    global task_index, current_env
+    def reset(self):
+        self.i = 0
+        text, _ = self.tasks[self.i]
 
-    # 🔥 Rotate TASK NAME (CRITICAL)
-    task_name = task_keys[task_index % 3]
-    current_env = env_map[task_name]
-    task_index += 1
+        return TaskObservation(
+            email=text,
+            done=False,
+            reward=0.1
+        )
 
-    result = current_env.reset()
-    obs = result["observation"]
-    rew = result["reward"]
+    def step(self, action: TaskAction):
+        text, correct = self.tasks[self.i]
 
-    return jsonify({
-        "observation": {
-            "email": obs.email
-        },
-        "reward": {
-            "value": float(rew.value)
-        },
-        "done": False,
-        "info": {
-            "score": float(rew.value),
-            "task": task_name   # 🔥 CRITICAL FOR VALIDATOR
-        }
-    })
+        action_label = getattr(action, "label", "")
+        score = 0.9 if action_label == correct else 0.1
 
-# STEP
-@app.route("/step", methods=["POST"])
-def step():
-    global current_env, task_index
+        self.i += 1
+        done = self.i >= len(self.tasks)
 
-    data = request.get_json(silent=True) or {}
-    action = data.get("action", "support")
+        next_text = ""
+        if not done:
+            next_text = self.tasks[self.i][0]
 
-    result = current_env.step(action)
+        return TaskObservation(
+            email=next_text,
+            done=done,
+            reward=score
+        )
 
-    obs = result["observation"]
-    rew = result["reward"]
-    done = result.get("done", False)
+    @property
+    def state(self):
+        return self._state
 
-    return jsonify({
-        "observation": {
-            "email": obs.email if obs else ""
-        },
-        "reward": {
-            "value": float(rew.value) if rew else 0.1
-        },
-        "done": bool(done),
-        "info": {
-            "score": float(rew.value) if rew else 0.1,
-            "task": task_keys[(task_index - 1) % 3]  # 🔥 SAME TASK NAME
-        }
-    })
-
-# STATE
-@app.route("/state", methods=["GET"])
-def state():
-    return jsonify({"task": task_keys[(task_index - 1) % 3]})
-
-# MAIN
-def main():
-    print("🚀 RUNNING FLASK ON PORT 7860...")
-    app.run(host="0.0.0.0", port=7860, debug=False)
-
-if __name__ == "__main__":
-    main()
+    def close(self):
+        pass
