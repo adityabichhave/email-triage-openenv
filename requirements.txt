@@ -1,3 +1,4 @@
-openai
-flask
+openenv-core
+fastapi
+uvicorn
 pydantic
