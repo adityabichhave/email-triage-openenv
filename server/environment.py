@@ -50,10 +50,11 @@ class MultiTaskEnv:
         text, _ = self.current_tasks[self.i]
 
         return TaskObservation(
-            email=text,
-            done=False,
-            reward=0.1
-        )
+    email=text,
+    done=False,
+    reward=0.1,
+    info={"score": 0.1}   # 🔥 REQUIRED
+)
 
     def step(self, action: TaskAction):
         text, correct = self.current_tasks[self.i]
@@ -69,10 +70,11 @@ class MultiTaskEnv:
             next_text = self.current_tasks[self.i][0]
 
         return TaskObservation(
-            email=next_text,
-            done=done,
-            reward=score
-        )
+    email=next_text,
+    done=done,
+    reward=score,
+    info={"score": score}   # 🔥 THIS LINE FIXES EVERYTHING
+)
 
     @property
     def state(self):
