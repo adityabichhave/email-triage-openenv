@@ -4,8 +4,8 @@ from typing import List
 from openai import OpenAI
 
 # ✅ CORRECT IMPORTS
-from my_env.server.environment import MultiTaskEnv
-from my_env.models import TaskAction
+from server.environment import MultiTaskEnv
+from models import TaskAction
 
 
 API_BASE_URL = os.getenv("API_BASE_URL")
