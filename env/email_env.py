@@ -34,32 +34,26 @@ class EmailEnv:
         }
 
     def step(self, action):
-        target = self.email["label"]
-        clean_action = str(action).strip().lower().replace("[", "").replace("]", "")
+    target = self.email["label"]
+    action = str(action).strip().lower()
 
-        # ✅ STRICT RANGE (0,1)
-        if clean_action == target:
-            step_reward = 0.9
-            step_score = 0.9
-        else:
-            step_reward = 0.2
-            step_score = 0.2
+    if action == target:
+        score_val = 0.9
+    else:
+        score_val = 0.2
 
-        self.current_idx += 1
-        done = self.current_idx >= len(self.tasks)
+    self.current += 1
+    done = self.current >= len(self.tasks)
 
-        if not done:
-            self.email = self.tasks[self.current_idx]
-            next_email = self.email["email"]
-        else:
-            next_email = "Done"
+    if not done:
+        self.email = self.tasks[self.current]
+        next_email = self.email["email"]
+    else:
+        next_email = "DONE"
 
-        return {
-            "observation": Observation(next_email),
-            "reward": Reward(step_reward),
-            "done": done,
-            "info": {
-                "score": float(step_score),
-                "label": target
-            }
-        }
+    return {
+        "observation": Observation(next_email),
+        "reward": Reward(score_val),
+        "done": done,
+        "info": {"score": float(score_val)}
+    }
