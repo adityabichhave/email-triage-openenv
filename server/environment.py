@@ -48,10 +48,11 @@ class MultiTaskEnv:
         text, _ = self.current_tasks[self.sample_idx]
 
         return TaskObservation(
-            email=text,
-            done=False,
-            reward=0.1
-        )
+    email=text,
+    done=False,
+    reward=0.1,
+    info={"score": 0.1}   # 🔥 ADD THIS
+)
 
     async def reset_async(self, *args, **kwargs):
         return self.reset(*args, **kwargs)
@@ -72,10 +73,11 @@ class MultiTaskEnv:
             next_text = self.current_tasks[self.sample_idx][0]
 
         return TaskObservation(
-            email=next_text,
-            done=done,
-            reward=reward
-        )
+    email=next_text,
+    done=done,
+    reward=reward,
+    info={"score": reward}   # 🔥 ADD THIS
+)
 
     async def step_async(self, action):
         return self.step(action)
