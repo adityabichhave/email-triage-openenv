@@ -32,15 +32,17 @@ class MultiTaskEnv:
                 ("Immediate help required", "high"),
             ]
         ]
-
-        self.group_idx = -1
-        self.sample_idx = 0
         self.current_tasks = []
+        self.sample_idx = 0
 
-    # ✅ SAFE RESET (NO HASH, NO GLOBAL, NO CRASH)
-    def reset(self, episode_id=None, seed=None):
-        self.group_idx = (self.group_idx + 1) % len(self.task_groups)
-        self.current_tasks = self.task_groups[self.group_idx]
+    # ✅ CRITICAL: accept **kwargs (prevents 500)
+    def reset(self, *args, **kwargs):
+        episode_id = kwargs.get("episode_id", "")
+
+        # safe deterministic mapping (NO hash, NO crash)
+        idx = sum(ord(c) for c in str(episode_id)) % len(self.task_groups)
+
+        self.current_tasks = self.task_groups[idx]
         self.sample_idx = 0
 
         return TaskObservation(
@@ -52,7 +54,6 @@ class MultiTaskEnv:
     async def reset_async(self, *args, **kwargs):
         return self.reset(*args, **kwargs)
 
-    # ✅ SAFE STEP
     def step(self, action: TaskAction):
         if not self.current_tasks:
             self.reset()
@@ -89,8 +90,7 @@ class MultiTaskEnv:
 
     @property
     def state(self):
-        return {"group": self.group_idx}
+        return {}
 
-    # ✅ REQUIRED by OpenEnv (fixes your crash)
     def close(self):
         pass
