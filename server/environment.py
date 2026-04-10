@@ -10,7 +10,7 @@ class TaskObservation(Observation):
 
 
 class TaskState(State):
-    task_type: str = ""
+    pass
 
 
 class MultiTaskEnv:
@@ -19,33 +19,33 @@ class MultiTaskEnv:
             ("email", [
                 ("Support request: cannot login", "support"),
                 ("Need pricing info", "sales"),
+                ("Help needed urgently", "support"),
             ]),
             ("sentiment", [
                 ("I love this product", "positive"),
                 ("This is terrible", "negative"),
+                ("Amazing service", "positive"),
             ]),
             ("priority", [
                 ("URGENT issue", "high"),
                 ("Can wait", "low"),
+                ("Immediate help required", "high"),
             ])
         ]
 
-        self.group_index = -1
+        self.group_idx = -1
+        self.sample_idx = 0
         self.current_tasks = []
-        self.i = 0
         self._state = TaskState()
 
-    def reset(self, episode_id=None, seed=None):
-        # rotate task
-        self.group_index = (self.group_index + 1) % 3
+    def reset(self, *args, **kwargs):
+        # rotate task groups (VERY IMPORTANT)
+        self.group_idx = (self.group_idx + 1) % len(self.task_groups)
 
-        task_type, tasks = self.task_groups[self.group_index]
-        self.current_tasks = tasks
-        self.i = 0
+        _, self.current_tasks = self.task_groups[self.group_idx]
+        self.sample_idx = 0
 
-        self._state = TaskState(task_type=task_type)
-
-        text, _ = self.current_tasks[self.i]
+        text, _ = self.current_tasks[self.sample_idx]
 
         return TaskObservation(
             email=text,
@@ -53,24 +53,32 @@ class MultiTaskEnv:
             reward=0.1
         )
 
+    async def reset_async(self, *args, **kwargs):
+        return self.reset(*args, **kwargs)
+
     def step(self, action: TaskAction):
-        text, correct = self.current_tasks[self.i]
+        text, correct = self.current_tasks[self.sample_idx]
 
-        label = getattr(action, "label", "")
-        score = 0.9 if label == correct else 0.1
+        action_label = getattr(action, "label", "").lower().strip()
+        correct = correct.lower().strip()
 
-        self.i += 1
-        done = self.i >= len(self.current_tasks)
+        reward = 0.9 if action_label == correct else 0.1
+
+        self.sample_idx += 1
+        done = self.sample_idx >= len(self.current_tasks)
 
         next_text = ""
         if not done:
-            next_text = self.current_tasks[self.i][0]
+            next_text = self.current_tasks[self.sample_idx][0]
 
         return TaskObservation(
             email=next_text,
             done=done,
-            reward=score
+            reward=reward
         )
+
+    async def step_async(self, action):
+        return self.step(action)
 
     @property
     def state(self):
@@ -78,9 +86,3 @@ class MultiTaskEnv:
 
     def close(self):
         pass
-
-    async def reset_async(self, episode_id=None, seed=None):
-        return self.reset(episode_id=episode_id, seed=seed)
-
-    async def step_async(self, action):
-        return self.step(action)
