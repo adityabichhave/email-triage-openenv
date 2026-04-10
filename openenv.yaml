@@ -1,5 +1,13 @@
-name: email-triage-env
+name: multi-task-env
 version: 1.0
+
+tasks:
+  - name: email
+    description: Email classification
+  - name: sentiment
+    description: Sentiment classification
+  - name: priority
+    description: Priority classification
 
 entrypoint:
   command: python server/app.py
@@ -17,7 +25,6 @@ observation_space:
 
 action_space:
   type: string
-  enum: ["support", "sales", "complaint"]
 
 reward:
   type: float
