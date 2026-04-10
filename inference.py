@@ -4,7 +4,7 @@ from typing import List
 from openai import OpenAI
 
 # ✅ CORRECT IMPORTS
-from server.environment import MultiTaskEnv
+from server.environment import MultiTaskEnv, TaskAction
 from models import TaskAction
 
 
