@@ -13,6 +13,7 @@ class MultiTaskEnv:
             ("Check later", "low"),
         ]
         self.i = 0
+        self._state = EmailState()
 
     def reset(self):
         self.i = 0
@@ -27,7 +28,10 @@ class MultiTaskEnv:
     def step(self, action: EmailAction):
         email, correct = self.tasks[self.i]
 
-        score = 0.9 if action.label == correct else 0.1
+        # 🔥 SAFE ACCESS (fixes crash)
+        action_label = getattr(action, "label", "")
+
+        score = 0.9 if action_label == correct else 0.1
 
         self.i += 1
         done = self.i >= len(self.tasks)
@@ -44,8 +48,7 @@ class MultiTaskEnv:
 
     @property
     def state(self):
-        return {}
+        return self._state
 
-    # ✅ ADD THIS
     def close(self):
         pass
