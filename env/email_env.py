@@ -33,27 +33,27 @@ class EmailEnv:
             "info": {"score": 0.1}  # ✅ valid
         }
 
-    def step(self, action):
-        target = self.email["label"]
-        action = str(action).strip().lower()
+def step(self, action):
+    target = self.email["label"]
+    action = str(action).strip().lower()
 
-        if action == target:
-            score_val = 0.9
-        else:
-            score_val = 0.2
+    if action == target:
+        score_val = 0.9
+    else:
+        score_val = 0.2
 
-        self.current_idx += 1
-        done = self.current_idx >= len(self.tasks)
+    self.current_idx += 1
+    done = self.current_idx >= len(self.tasks)
 
-        if not done:
-            self.email = self.tasks[self.current_idx]
-            next_email = self.email["email"]
-        else:
-            next_email = "DONE"
+    if not done:
+        self.email = self.tasks[self.current_idx]
 
-        return {
-            "observation": Observation(next_email),
-            "reward": Reward(score_val),
-            "done": done,
-            "info": {"score": float(score_val)}
-        }
+    # ✅ ALWAYS VALID EMAIL
+    next_email = self.email["email"]
+
+    return {
+        "observation": Observation(next_email),
+        "reward": Reward(score_val),
+        "done": done,
+        "info": {"score": float(score_val)}
+    }
