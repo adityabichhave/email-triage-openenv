@@ -15,7 +15,6 @@ class TaskState(State):
 
 class MultiTaskEnv:
     def __init__(self):
-        # 🔥 3 DISTINCT TASK GROUPS
         self.task_groups = [
             ("email", [
                 ("Support request: cannot login", "support"),
@@ -36,10 +35,9 @@ class MultiTaskEnv:
         self.i = 0
         self._state = TaskState()
 
-    # 🔥 MUST accept these params
     def reset(self, episode_id=None, seed=None):
-        # rotate task group
-        self.group_index = (self.group_index + 1) % len(self.task_groups)
+        # rotate task
+        self.group_index = (self.group_index + 1) % 3
 
         task_type, tasks = self.task_groups[self.group_index]
         self.current_tasks = tasks
@@ -50,11 +48,10 @@ class MultiTaskEnv:
         text, _ = self.current_tasks[self.i]
 
         return TaskObservation(
-    email=text,
-    done=False,
-    reward=0.1,
-    info={"score": 0.1}   # 🔥 REQUIRED
-)
+            email=text,
+            done=False,
+            reward=0.1
+        )
 
     def step(self, action: TaskAction):
         text, correct = self.current_tasks[self.i]
@@ -70,11 +67,10 @@ class MultiTaskEnv:
             next_text = self.current_tasks[self.i][0]
 
         return TaskObservation(
-    email=next_text,
-    done=done,
-    reward=score,
-    info={"score": score}   # 🔥 THIS LINE FIXES EVERYTHING
-)
+            email=next_text,
+            done=done,
+            reward=score
+        )
 
     @property
     def state(self):
@@ -83,7 +79,6 @@ class MultiTaskEnv:
     def close(self):
         pass
 
-    # 🔥 REQUIRED FOR OPENENV (ASYNC SUPPORT)
     async def reset_async(self, episode_id=None, seed=None):
         return self.reset(episode_id=episode_id, seed=seed)
 
