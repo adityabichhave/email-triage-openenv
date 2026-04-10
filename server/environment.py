@@ -1,29 +1,25 @@
-import random
-from typing import Dict
 from models import EmailAction, EmailObservation, EmailState
 
 
 class MultiTaskEnv:
     def __init__(self):
         self.tasks = [
-            ("I cannot login", "support", "email"),
-            ("Pricing details?", "sales", "email"),
-            ("Product broken", "complaint", "email"),
+            ("I cannot login", "support"),
+            ("Pricing details?", "sales"),
+            ("Product broken", "complaint"),
 
-            ("I love this", "positive", "sentiment"),
-            ("This is bad", "negative", "sentiment"),
+            ("I love this", "positive"),
+            ("This is bad", "negative"),
 
-            ("URGENT issue", "high", "priority"),
-            ("Check later", "low", "priority"),
+            ("URGENT issue", "high"),
+            ("Check later", "low"),
         ]
         self.i = 0
-        self.state = EmailState()
+        self._state = EmailState()
 
     def reset(self) -> EmailObservation:
         self.i = 0
-        email, _, task = self.tasks[self.i]
-
-        self.state = EmailState(task_type=task)
+        email, _ = self.tasks[self.i]
 
         return EmailObservation(
             email=email,
@@ -32,7 +28,7 @@ class MultiTaskEnv:
         )
 
     def step(self, action: EmailAction) -> EmailObservation:
-        email, correct, task = self.tasks[self.i]
+        email, correct = self.tasks[self.i]
 
         score = 0.9 if action.label == correct else 0.1
 
@@ -48,3 +44,7 @@ class MultiTaskEnv:
             done=done,
             reward=score
         )
+
+    @property
+    def state(self):
+        return self._state
