@@ -1,14 +1,6 @@
 name: multi-task-env
 version: 1.0
 
-tasks:
-  - name: email
-    description: Email classification
-  - name: sentiment
-    description: Sentiment classification
-  - name: priority
-    description: Priority classification
-
 entrypoint:
   command: python server/app.py
 
@@ -16,6 +8,14 @@ endpoints:
   reset: POST /reset
   step: POST /step
   state: GET /state
+
+tasks:
+  - id: email
+    description: Email classification task
+  - id: sentiment
+    description: Sentiment classification task
+  - id: priority
+    description: Priority classification task
 
 observation_space:
   type: object
