@@ -39,18 +39,32 @@ class MultiTaskEnv:
         self._state = TaskState()
 
     # 🔥 RESET (NO info field)
-    def reset(self, *args, **kwargs):
+def reset(self, *args, **kwargs):
+    try:
         self.group_idx = (self.group_idx + 1) % len(self.task_groups)
-
         task_type, self.current_tasks = self.task_groups[self.group_idx]
         self.sample_idx = 0
 
         text, _ = self.current_tasks[self.sample_idx]
 
-        print("RESET TASK:", task_type)  # debug log
+        print("RESET TASK:", task_type)
 
         return TaskObservation(
             email=text,
+            done=False,
+            reward=0.1
+        )
+
+    except Exception as e:
+        print("RESET ERROR:", str(e))
+
+        # fallback (never crash)
+        self.group_idx = 0
+        self.current_tasks = self.task_groups[0][1]
+        self.sample_idx = 0
+
+        return TaskObservation(
+            email=self.current_tasks[0][0],
             done=False,
             reward=0.1
         )
@@ -59,7 +73,8 @@ class MultiTaskEnv:
         return self.reset(*args, **kwargs)
 
     # 🔥 STEP (reward acts as score)
-    def step(self, action: TaskAction):
+def step(self, action: TaskAction):
+    try:
         text, correct = self.current_tasks[self.sample_idx]
 
         action_label = getattr(action, "label", "").lower().strip()
@@ -78,6 +93,15 @@ class MultiTaskEnv:
             email=next_text,
             done=done,
             reward=reward
+        )
+
+    except Exception as e:
+        print("STEP ERROR:", str(e))
+
+        return TaskObservation(
+            email="error",
+            done=True,
+            reward=0.1
         )
 
     async def step_async(self, action):
