@@ -61,41 +61,45 @@ Return only the label.
 
 
 async def main():
-    # 🔥 REQUIRED CLIENT (LiteLLM proxy)
     client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
     env = MultiTaskEnv()
 
-    rewards: List[float] = []
-    steps = 0
-    success = False
-
     log_start(TASK_NAME, BENCHMARK, MODEL_NAME)
 
+    all_rewards = []
+    total_steps = 0
+
     try:
-        result = env.reset()
-        email = result.email
-
-        for step in range(1, MAX_STEPS + 1):
-            label = get_label_from_llm(client, email)
-
-            result = env.step(TaskAction(label=label))
-
-            reward = result.reward or 0.0
-            done = result.done
-
-            rewards.append(reward)
-            steps = step
-
-            log_step(step, label, reward, done)
-
-            if done:
-                break
+        # 🔥 RUN 3 EPISODES (THIS FIXES GRADER ISSUE)
+        for episode in range(3):
+            result = env.reset()
 
             email = result.email
+            rewards = []
 
-        # ✅ NORMALIZED SCORE
-        score = sum(rewards) / len(rewards) if rewards else 0.0
+            for step in range(1, MAX_STEPS + 1):
+                label = get_label_from_llm(client, email)
+
+                result = env.step(TaskAction(label=label))
+
+                reward = result.reward or 0.0
+                done = result.done
+
+                rewards.append(reward)
+                total_steps += 1
+
+                log_step(step, label, reward, done)
+
+                if done:
+                    break
+
+                email = result.email
+
+            all_rewards.extend(rewards)
+
+        # ✅ FINAL SCORE
+        score = sum(all_rewards) / len(all_rewards) if all_rewards else 0.0
         success = score > 0.5
 
     finally:
@@ -104,7 +108,7 @@ async def main():
         except:
             pass
 
-        log_end(success, steps, score, rewards)
+        log_end(success, total_steps, score, all_rewards)
 
 
 if __name__ == "__main__":
