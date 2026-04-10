@@ -7,3 +7,7 @@ app = create_fastapi_app(
     EmailAction,
     EmailObservation
 )
+
+@app.get("/")
+def root():
+    return {"status": "ok"}
