@@ -1,13 +1,14 @@
 import asyncio
 import os
 from typing import List
-
 from openai import OpenAI
 
+# 🔥 FIX THIS IMPORT BASED ON YOUR STRUCTURE
 from server.environment import TaskAction, MultiTaskEnv
 
-API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
-MODEL_NAME = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-72B-Instruct"
+
+API_BASE_URL = os.getenv("API_BASE_URL")
+MODEL_NAME = os.getenv("MODEL_NAME")
 API_KEY = os.getenv("HF_TOKEN")
 
 TASK_NAME = "email-triage"
@@ -20,42 +21,63 @@ def log_start(task, env, model):
 
 
 def log_step(step, action, reward, done):
-    print(f"[STEP] step={step} action={action} reward={reward:.2f} done={str(done).lower()} error=null", flush=True)
+    print(
+        f"[STEP] step={step} action={action} reward={reward:.2f} done={str(done).lower()} error=null",
+        flush=True,
+    )
 
 
 def log_end(success, steps, score, rewards):
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
-    print(f"[END] success={str(success).lower()} steps={steps} score={score:.2f} rewards={rewards_str}", flush=True)
+    print(
+        f"[END] success={str(success).lower()} steps={steps} score={score:.2f} rewards={rewards_str}",
+        flush=True,
+    )
 
 
-def decide_label(email: str) -> str:
-    email = email.lower()
-    if "urgent" in email:
-        return "high"
-    if "love" in email:
-        return "positive"
-    if "terrible" in email:
-        return "negative"
-    if "pricing" in email:
-        return "sales"
-    return "support"
+# 🔥 REQUIRED: LLM CALL (this fixes your validator error)
+def get_label_from_llm(client, email: str) -> str:
+    prompt = f"""
+Classify this email into one label:
+support, sales, positive, negative, high, low
+
+Email: {email}
+
+Return only the label.
+"""
+
+    try:
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0,
+            max_tokens=10,
+        )
+        label = response.choices[0].message.content.strip().lower()
+        return label
+    except Exception as e:
+        print(f"[DEBUG] LLM error: {e}", flush=True)
+        return "support"
 
 
 async def main():
+    # 🔥 REQUIRED CLIENT (LiteLLM proxy)
+    client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
+
     env = MultiTaskEnv()
 
     rewards: List[float] = []
     steps = 0
+    success = False
 
     log_start(TASK_NAME, BENCHMARK, MODEL_NAME)
 
     try:
         result = env.reset()
-        obs = result
-        email = obs.email
+        email = result.email
 
         for step in range(1, MAX_STEPS + 1):
-            label = decide_label(email)
+            label = get_label_from_llm(client, email)
 
             result = env.step(TaskAction(label=label))
 
@@ -72,6 +94,7 @@ async def main():
 
             email = result.email
 
+        # ✅ NORMALIZED SCORE
         score = sum(rewards) / len(rewards) if rewards else 0.0
         success = score > 0.5
 
