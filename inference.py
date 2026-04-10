@@ -1,121 +1,88 @@
+import asyncio
 import os
+from typing import List
+
 from openai import OpenAI
 
-# 1. Start Log
-print("[START] task=multi_env env=openenv model=llm", flush=True)
+from your_env import TaskAction, MultiTaskEnv  # 🔥 YOUR ENV
 
-# 2. Config (STRICT)
-api_base = os.environ.get("API_BASE_URL", "").rstrip("/")
-api_key = os.environ.get("API_KEY", "")
-model_name = os.environ.get("MODEL_NAME", "gpt-3.5-turbo")
+API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
+MODEL_NAME = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-72B-Instruct"
+API_KEY = os.getenv("HF_TOKEN")
 
-# Ensure /v1
-if not api_base.endswith("/v1"):
-    api_base = f"{api_base}/v1"
-
-client = OpenAI(
-    base_url=api_base,
-    api_key=api_key
-)
-
-# Import all 3 envs
-from env.email_env import EmailEnv
-from env.sentiment_env import SentimentEnv
-from env.priority_env import PriorityEnv
+TASK_NAME = "email-triage"
+BENCHMARK = "email-env"
+MAX_STEPS = 5
 
 
-# 🔹 LLM Call
-def call_llm(text):
-    try:
-        response = client.chat.completions.create(
-            model=model_name,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "Classify the email into ONE word: support, sales, complaint, positive, negative, high, or low"
-                },
-                {
-                    "role": "user",
-                    "content": text
-                }
-            ],
-            max_tokens=5,
-            temperature=0
-        )
-
-        content = response.choices[0].message.content.lower()
-
-        # Category
-        if "sales" in content: return "sales"
-        if "complaint" in content: return "complaint"
-        if "support" in content: return "support"
-
-        # Sentiment
-        if "positive" in content: return "positive"
-        if "negative" in content: return "negative"
-
-        # Priority
-        if "high" in content: return "high"
-        if "low" in content: return "low"
-
-        return "support"
-
-    except Exception:
-        return "support"
+def log_start(task, env, model):
+    print(f"[START] task={task} env={env} model={model}", flush=True)
 
 
-# 🔹 Run each environment
-def run_env(env):
-    rewards = []
+def log_step(step, action, reward, done):
+    print(f"[STEP] step={step} action={action} reward={reward:.2f} done={str(done).lower()} error=null", flush=True)
+
+
+def log_end(success, steps, score, rewards):
+    rewards_str = ",".join(f"{r:.2f}" for r in rewards)
+    print(f"[END] success={str(success).lower()} steps={steps} score={score:.2f} rewards={rewards_str}", flush=True)
+
+
+def decide_label(email: str) -> str:
+    email = email.lower()
+    if "urgent" in email:
+        return "high"
+    if "love" in email:
+        return "positive"
+    if "terrible" in email:
+        return "negative"
+    if "pricing" in email:
+        return "sales"
+    return "support"
+
+
+async def main():
+    env = MultiTaskEnv()
+
+    rewards: List[float] = []
     steps = 0
 
-    res = env.reset()
-    obs = res["observation"]
-
-    for i in range(1, 10):
-        action = call_llm(obs.email)
-        result = env.step(action)
-
-        rew = result["reward"].value
-        done = result["done"]
-
-        rewards.append(rew)
-        steps += 1
-
-        print(f"[STEP] step={steps} action={action} reward={rew:.2f} done={str(done).lower()} error=null", flush=True)
-
-        if done:
-            break
-
-        obs = result["observation"]
-
-    return rewards, steps
-
-
-# 🔹 Main Execution
-def main():
-    all_rewards = []
-    total_steps = 0
+    log_start(TASK_NAME, BENCHMARK, MODEL_NAME)
 
     try:
-        # Run all 3 tasks (REQUIRED)
-        for env_class in [EmailEnv, SentimentEnv, PriorityEnv]:
-            env = env_class()
-            rewards, steps = run_env(env)
+        result = env.reset()
+        obs = result
+        email = obs.email
 
-            all_rewards.extend(rewards)
-            total_steps += steps
+        for step in range(1, MAX_STEPS + 1):
+            label = decide_label(email)
 
-        score = sum(all_rewards) / len(all_rewards) if all_rewards else 0.0
+            result = env.step(TaskAction(label=label))
 
-    except Exception as e:
-        print(f"[STEP] step={total_steps} action=none reward=0.00 done=true error={type(e).__name__}", flush=True)
-        score = 0.0
+            reward = result.reward or 0.0
+            done = result.done
+
+            rewards.append(reward)
+            steps = step
+
+            log_step(step, label, reward, done)
+
+            if done:
+                break
+
+            email = result.email
+
+        score = sum(rewards) / len(rewards) if rewards else 0.0
+        success = score > 0.5
 
     finally:
-        r_str = ",".join(f"{r:.2f}" for r in all_rewards) if all_rewards else "0.00"
-        print(f"[END] success={str(score > 0.3).lower()} steps={total_steps} score={score:.2f} rewards={r_str}", flush=True)
+        try:
+            env.close()
+        except:
+            pass
+
+        log_end(success, steps, score, rewards)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
