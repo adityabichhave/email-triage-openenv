@@ -1,30 +1,31 @@
-import sys
 import os
-import importlib.util
 from flask import Flask, request, jsonify
 
+from env.email_env import EmailEnv
+from env.sentiment_env import SentimentEnv
+from env.priority_env import PriorityEnv
+
 app = Flask(__name__)
-env = None
+
+# 🔥 REGISTER ALL TASKS HERE
+ENV_MAP = {
+    "email": EmailEnv,
+    "sentiment": SentimentEnv,
+    "priority": PriorityEnv
+}
+
+env_instances = {}
 
 
-def load_env_manually():
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    target_file = os.path.join(base_dir, "env", "email_env.py")
+def get_env(task_name):
+    if task_name not in ENV_MAP:
+        raise Exception(f"Invalid task: {task_name}")
 
-    if not os.path.exists(target_file):
-        target_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "email_env.py")
+    if task_name not in env_instances:
+        env_instances[task_name] = ENV_MAP[task_name]()
 
-    try:
-        spec = importlib.util.spec_from_file_location("email_env", target_file)
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        return mod.EmailEnv()
-    except Exception as e:
-        print(f"❌ ENV LOAD FAILED: {e}", flush=True)
-        return None
+    return env_instances[task_name]
 
-
-# --- API ENDPOINTS ---
 
 @app.route("/", methods=["GET"])
 def home():
@@ -33,94 +34,62 @@ def home():
 
 @app.route("/reset", methods=["POST"])
 def reset():
-    global env
-
-    if env is None:
-        return jsonify({"error": "env not initialized"}), 500
-
     try:
-        print("🔄 RESET CALLED", flush=True)
+        data = request.get_json(force=True) or {}
+        task = data.get("task", "email")
 
+        env = get_env(task)
         res = env.reset()
         obs = res["observation"]
 
         return jsonify({
-            "observation": {
-                "email": obs.email
-            },
-            "reward": {
-                "value": float(res["reward"].value)
-            },
+            "observation": {"email": obs.email},
+            "reward": {"value": float(res["reward"].value)},
             "done": bool(res["done"]),
-            "info": res.get("info", {"score": 0.0})
+            "info": {"score": float(res["reward"].value), "task": task}
         })
 
     except Exception as e:
-        print(f"❌ RESET ERROR: {e}", flush=True)
         return jsonify({"error": str(e)}), 500
 
 
 @app.route("/step", methods=["POST"])
 def step():
-    global env
-
-    if env is None:
-        return jsonify({"error": "env not initialized"}), 500
-
     try:
         data = request.get_json(force=True)
+        task = data.get("task", "email")
         action = data.get("action", "support")
 
-        print(f"➡️ STEP CALLED with action={action}", flush=True)
-
+        env = get_env(task)
         result = env.step(action)
         obs = result["observation"]
 
         return jsonify({
-            "observation": {
-                "email": obs.email
-            },
-            "reward": {
-                "value": float(result["reward"].value)
-            },
+            "observation": {"email": obs.email},
+            "reward": {"value": float(result["reward"].value)},
             "done": bool(result["done"]),
-            "info": result.get("info", {"score": 0.0})
+            "info": {
+                "score": float(result["reward"].value),
+                "task": task
+            }
         })
 
     except Exception as e:
-        print(f"❌ STEP ERROR: {e}", flush=True)
         return jsonify({"error": str(e)}), 500
 
 
 @app.route("/state", methods=["GET"])
 def state():
-    global env
-
-    if env is None:
-        return jsonify({"error": "env not initialized"}), 500
-
     try:
+        task = request.args.get("task", "email")
+        env = get_env(task)
         return jsonify(env.state())
     except Exception as e:
-        print(f"❌ STATE ERROR: {e}", flush=True)
         return jsonify({"error": str(e)}), 500
 
 
-# --- ENTRY POINT ---
-
 def main():
-    global env
-
-    print("🔥 APP STARTING via main()...", flush=True)
-
-    env = load_env_manually()
-
-    if env is None:
-        print("❌ ENV FAILED TO LOAD - EXITING", flush=True)
-        raise Exception("Env failed to load")
-
-    print("✅ ENV LOADED SUCCESSFULLY", flush=True)
-
+    print("🔥 MULTI-TASK APP STARTED", flush=True)
     app.run(host="0.0.0.0", port=7860, debug=False)
 
 
