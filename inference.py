@@ -30,7 +30,7 @@ def call_llm(text):
         response = client.chat.completions.create(
             model=model_name,
             messages=[
-                {"role": "system", "content": "Classify the email into one word depending on context:\n- support, sales, complaint\n- positive, negative\n- high, low"}
+                {"role": "system", "content": "Classify the email into one word depending on context:\n- support, sales, complaint\n- positive, negative\n- high, low"},
                 {"role": "user", "content": text}
             ],
             max_tokens=5,
