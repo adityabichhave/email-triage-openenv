@@ -14,14 +14,21 @@ class Reward(BaseModel):
 
 class EmailEnv:
     def __init__(self):
-        # 5 TASKS (≥3 required)
+        # 3 TYPES OF TASKS (Graders)
         self.tasks = [
-            {"email": "Support request: I cannot login.", "label": "support"},
-            {"email": "Sales inquiry: Pricing for 500 units?", "label": "sales"},
-            {"email": "Complaint: My order arrived broken.", "label": "complaint"},
-            {"email": "I want to buy a subscription.", "label": "sales"},
-            {"email": "Shipping delay made me angry.", "label": "complaint"},
+            # --- TASK 1: CATEGORY ---
+            {"email": "I cannot login to my account.", "type": "category", "label": "support"},
+            {"email": "Pricing for bulk order?", "type": "category", "label": "sales"},
+
+            # --- TASK 2: SENTIMENT ---
+            {"email": "I am very angry about this delay.", "type": "sentiment", "label": "negative"},
+            {"email": "Great service, thank you!", "type": "sentiment", "label": "positive"},
+
+            # --- TASK 3: PRIORITY ---
+            {"email": "URGENT: system is down!", "type": "priority", "label": "high"},
+            {"email": "Whenever possible, check this issue.", "type": "priority", "label": "low"},
         ]
+
         self.current_idx = 0
         self.email = self.tasks[self.current_idx]
 
@@ -38,10 +45,15 @@ class EmailEnv:
 
     def step(self, action):
         target = self.email["label"]
+        task_type = self.email["type"]
+
         action_str = str(action).strip().lower()
 
-        # Grader (0–1 range)
-        score_val = 0.9 if action_str == target else 0.2
+        # --- GRADER LOGIC ---
+        if action_str == target:
+            score_val = 1.0
+        else:
+            score_val = 0.2
 
         self.current_idx += 1
         done = self.current_idx >= len(self.tasks)
@@ -53,7 +65,10 @@ class EmailEnv:
             "observation": Observation(email=self.email["email"]),
             "reward": Reward(value=float(score_val)),
             "done": done,
-            "info": {"score": float(score_val)}
+            "info": {
+                "score": float(score_val),
+                "task_type": task_type
+            }
         }
 
     def state(self):
