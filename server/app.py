@@ -4,51 +4,47 @@ import sys
 import os
 from flask import Flask, request, jsonify
 
-# ✅ PATH FIX
+# PATH FIX
 current_dir = os.path.dirname(os.path.abspath(__file__))
 root_path = os.path.dirname(current_dir)
 if root_path not in sys.path:
     sys.path.append(root_path)
 
-# -------- IMPORT ENVS --------
-try:
-    from env.email_env import EmailEnv
-    from env.sentiment_env import SentimentEnv
-    from env.priority_env import PriorityEnv
+# IMPORT ENVS
+from env.email_env import EmailEnv
+from env.sentiment_env import SentimentEnv
+from env.priority_env import PriorityEnv
 
-    envs = [EmailEnv(), SentimentEnv(), PriorityEnv()]
-    current_env_index = 0
-    env = envs[current_env_index]
+env_map = {
+    "email": EmailEnv(),
+    "sentiment": SentimentEnv(),
+    "priority": PriorityEnv()
+}
 
-    print("✅ ENV LOADED SUCCESSFULLY")
+task_keys = list(env_map.keys())
+task_index = 0
+current_env = env_map[task_keys[0]]
 
-except Exception as e:
-    print("❌ ERROR LOADING ENV:", e)
-    import traceback
-    traceback.print_exc()
-    envs = []
-    env = None
+print("✅ ENV LOADED SUCCESSFULLY")
 
 app = Flask(__name__)
 
-# -------- ROOT --------
+# ROOT
 @app.route("/", methods=["GET"])
 def home():
     return "OK"
 
-# -------- RESET --------
+# RESET
 @app.route("/reset", methods=["POST"])
 def reset():
-    global current_env_index, env
+    global task_index, current_env
 
-    if not envs:
-        return jsonify({"error": "env not initialized"}), 500
+    # 🔥 Rotate TASK NAME (CRITICAL)
+    task_name = task_keys[task_index % 3]
+    current_env = env_map[task_name]
+    task_index += 1
 
-    # 🔥 Rotate tasks (VERY IMPORTANT)
-    env = envs[current_env_index % len(envs)]
-    current_env_index += 1
-
-    result = env.reset()
+    result = current_env.reset()
     obs = result["observation"]
     rew = result["reward"]
 
@@ -62,25 +58,19 @@ def reset():
         "done": False,
         "info": {
             "score": float(rew.value),
-            "task": current_env_index
+            "task": task_name   # 🔥 CRITICAL FOR VALIDATOR
         }
     })
 
-# -------- STEP --------
+# STEP
 @app.route("/step", methods=["POST"])
 def step():
-    global env
+    global current_env, task_index
 
-    if env is None:
-        return jsonify({"error": "env not initialized"}), 500
+    data = request.get_json(silent=True) or {}
+    action = data.get("action", "support")
 
-    try:
-        data = request.get_json(silent=True) or {}
-        action = data.get("action", "support")
-    except:
-        action = "support"
-
-    result = env.step(action)
+    result = current_env.step(action)
 
     obs = result["observation"]
     rew = result["reward"]
@@ -95,19 +85,17 @@ def step():
         },
         "done": bool(done),
         "info": {
-            "score": float(rew.value) if rew else 0.1
+            "score": float(rew.value) if rew else 0.1,
+            "task": task_keys[(task_index - 1) % 3]  # 🔥 SAME TASK NAME
         }
     })
 
-# -------- STATE --------
+# STATE
 @app.route("/state", methods=["GET"])
 def state():
-    global env
-    if env is None:
-        return jsonify({"error": "env not initialized"}), 500
-    return jsonify(env.state())
+    return jsonify({"task": task_keys[(task_index - 1) % 3]})
 
-# -------- MAIN --------
+# MAIN
 def main():
     print("🚀 RUNNING FLASK ON PORT 7860...")
     app.run(host="0.0.0.0", port=7860, debug=False)
