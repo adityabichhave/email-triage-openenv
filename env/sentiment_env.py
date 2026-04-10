@@ -9,28 +9,35 @@ class Reward(BaseModel):
 class SentimentEnv:
     def __init__(self):
         self.tasks = [
-            ("I love this service", "positive"),
-            ("This is terrible", "negative"),
-            ("Very happy with product", "positive"),
+            ("I love this", "positive"),
+            ("This is bad", "negative"),
+            ("Very happy", "positive"),
         ]
         self.i = 0
 
     def reset(self):
         self.i = 0
-        return {"observation": Observation(email=self.tasks[0][0]), "reward": Reward(0.0), "done": False, "info": {}}
+        return {
+            "observation": Observation(email=self.tasks[0][0]),
+            "reward": Reward(value=0.1),
+            "done": False,
+            "info": {}
+        }
 
     def step(self, action):
         correct = self.tasks[self.i][1]
-        score = 1.0 if action == correct else 0.0
+        score = 0.9 if action == correct else 0.1
 
         self.i += 1
         done = self.i >= len(self.tasks)
 
-        obs = self.tasks[self.i][0] if not done else ""
+        next_email = ""
+        if not done:
+            next_email = self.tasks[self.i][0]
 
         return {
-            "observation": Observation(email=obs),
-            "reward": Reward(score),
+            "observation": Observation(email=next_email),
+            "reward": Reward(value=score),
             "done": done,
             "info": {"score": score}
         }
