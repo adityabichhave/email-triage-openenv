@@ -36,20 +36,22 @@ class MultiTaskEnv:
         self.sample_idx = 0
 
     # ✅ CRITICAL: accept **kwargs (prevents 500)
-    def reset(self, *args, **kwargs):
-        episode_id = kwargs.get("episode_id", "")
+def reset(self, *args, **kwargs):
+    # use internal counter (safe fallback)
+    if not hasattr(self, "_counter"):
+        self._counter = 0
 
-        # safe deterministic mapping (NO hash, NO crash)
-        idx = sum(ord(c) for c in str(episode_id)) % len(self.task_groups)
+    idx = self._counter % len(self.task_groups)
+    self._counter += 1
 
-        self.current_tasks = self.task_groups[idx]
-        self.sample_idx = 0
+    self.current_tasks = self.task_groups[idx]
+    self.sample_idx = 0
 
-        return TaskObservation(
-            email=self.current_tasks[0][0],
-            done=False,
-            reward=0.1
-        )
+    return TaskObservation(
+        email=self.current_tasks[0][0],
+        done=False,
+        reward=0.1
+    )
 
     async def reset_async(self, *args, **kwargs):
         return self.reset(*args, **kwargs)
