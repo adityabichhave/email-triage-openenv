@@ -15,6 +15,7 @@ class TaskState(State):
 
 class MultiTaskEnv:
     def __init__(self):
+        # 🔥 3 DISTINCT TASK GROUPS
         self.task_groups = [
             ("email", [
                 ("Support request: cannot login", "support"),
@@ -35,15 +36,15 @@ class MultiTaskEnv:
         self.i = 0
         self._state = TaskState()
 
-    def reset(self):
-        # 🔥 IMPORTANT: rotate task each reset
-        self.group_index = (self.group_index + 1) % 3
+    # 🔥 MUST accept these params
+    def reset(self, episode_id=None, seed=None):
+        # rotate task group
+        self.group_index = (self.group_index + 1) % len(self.task_groups)
 
         task_type, tasks = self.task_groups[self.group_index]
         self.current_tasks = tasks
         self.i = 0
 
-        # 🔥 THIS LINE MAKES VALIDATOR SEE TASKS
         self._state = TaskState(task_type=task_type)
 
         text, _ = self.current_tasks[self.i]
@@ -79,3 +80,10 @@ class MultiTaskEnv:
 
     def close(self):
         pass
+
+    # 🔥 REQUIRED FOR OPENENV (ASYNC SUPPORT)
+    async def reset_async(self, episode_id=None, seed=None):
+        return self.reset(episode_id=episode_id, seed=seed)
+
+    async def step_async(self, action):
+        return self.step(action)
