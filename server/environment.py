@@ -38,25 +38,27 @@ class MultiTaskEnv:
         self.current_tasks = []
         self._state = TaskState()
 
+    # 🔥 RESET (NO info field)
     def reset(self, *args, **kwargs):
-        # rotate task groups (VERY IMPORTANT)
         self.group_idx = (self.group_idx + 1) % len(self.task_groups)
 
-        _, self.current_tasks = self.task_groups[self.group_idx]
+        task_type, self.current_tasks = self.task_groups[self.group_idx]
         self.sample_idx = 0
 
         text, _ = self.current_tasks[self.sample_idx]
 
+        print("RESET TASK:", task_type)  # debug log
+
         return TaskObservation(
-    email=text,
-    done=False,
-    reward=0.1,
-    info={"score": 0.1}   # 🔥 ADD THIS
-)
+            email=text,
+            done=False,
+            reward=0.1
+        )
 
     async def reset_async(self, *args, **kwargs):
         return self.reset(*args, **kwargs)
 
+    # 🔥 STEP (reward acts as score)
     def step(self, action: TaskAction):
         text, correct = self.current_tasks[self.sample_idx]
 
@@ -73,11 +75,10 @@ class MultiTaskEnv:
             next_text = self.current_tasks[self.sample_idx][0]
 
         return TaskObservation(
-    email=next_text,
-    done=done,
-    reward=reward,
-    info={"score": reward}   # 🔥 ADD THIS
-)
+            email=next_text,
+            done=done,
+            reward=reward
+        )
 
     async def step_async(self, action):
         return self.step(action)
