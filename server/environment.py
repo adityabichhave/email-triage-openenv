@@ -7,17 +7,14 @@ class MultiTaskEnv:
             ("I cannot login", "support"),
             ("Pricing details?", "sales"),
             ("Product broken", "complaint"),
-
             ("I love this", "positive"),
             ("This is bad", "negative"),
-
             ("URGENT issue", "high"),
             ("Check later", "low"),
         ]
         self.i = 0
-        self._state = EmailState()
 
-    def reset(self) -> EmailObservation:
+    def reset(self):
         self.i = 0
         email, _ = self.tasks[self.i]
 
@@ -27,7 +24,7 @@ class MultiTaskEnv:
             reward=0.1
         )
 
-    def step(self, action: EmailAction) -> EmailObservation:
+    def step(self, action: EmailAction):
         email, correct = self.tasks[self.i]
 
         score = 0.9 if action.label == correct else 0.1
@@ -47,4 +44,8 @@ class MultiTaskEnv:
 
     @property
     def state(self):
-        return self._state
+        return {}
+
+    # ✅ ADD THIS
+    def close(self):
+        pass
