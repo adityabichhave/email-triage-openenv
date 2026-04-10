@@ -1,4 +1,4 @@
-from openenv.core.env_server import Action, Observation, State
+from openenv.core.env_server import Action, Observation, State, Environment
 
 
 class TaskAction(Action):
@@ -13,7 +13,7 @@ class TaskState(State):
     pass
 
 
-class MultiTaskEnv:
+class MultiTaskEnv(Environment):  # 🔥 IMPORTANT CHANGE
     def __init__(self):
         self.task_groups = [
             [
@@ -34,29 +34,20 @@ class MultiTaskEnv:
         ]
         self.current_tasks = []
         self.sample_idx = 0
+        self.group_idx = -1
 
-    # ✅ CRITICAL: accept **kwargs (prevents 500)
-def reset(self, *args, **kwargs):
-    # use internal counter (safe fallback)
-    if not hasattr(self, "_counter"):
-        self._counter = 0
+    def reset(self, *args, **kwargs):
+        self.group_idx = (self.group_idx + 1) % len(self.task_groups)
+        self.current_tasks = self.task_groups[self.group_idx]
+        self.sample_idx = 0
 
-    idx = self._counter % len(self.task_groups)
-    self._counter += 1
+        return TaskObservation(
+            email=self.current_tasks[0][0],
+            done=False,
+            reward=0.1
+        )
 
-    self.current_tasks = self.task_groups[idx]
-    self.sample_idx = 0
-
-    return TaskObservation(
-        email=self.current_tasks[0][0],
-        done=False,
-        reward=0.1
-    )
-
-    async def reset_async(self, *args, **kwargs):
-        return self.reset(*args, **kwargs)
-
-    def step(self, action: TaskAction):
+    def step(self, action: TaskAction, **kwargs):
         if not self.current_tasks:
             self.reset()
 
@@ -87,12 +78,9 @@ def reset(self, *args, **kwargs):
             reward=reward
         )
 
-    async def step_async(self, action):
-        return self.step(action)
-
     @property
     def state(self):
-        return {}
+        return TaskState()
 
     def close(self):
         pass
