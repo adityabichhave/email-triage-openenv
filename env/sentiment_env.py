@@ -21,7 +21,7 @@ class SentimentEnv:
             "observation": Observation(email=self.tasks[0][0]),
             "reward": Reward(value=0.1),
             "done": False,
-            "info": {}
+            "info": {"score": 0.1}
         }
 
     def step(self, action):
