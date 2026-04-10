@@ -1,61 +1,46 @@
 from pydantic import BaseModel
-from typing import List, Optional
-
 
 class Observation(BaseModel):
     email: str
-    prompt: Optional[str] = None
-    messages: Optional[List[str]] = []
-
 
 class Reward(BaseModel):
     value: float
 
-
 class EmailEnv:
     def __init__(self):
         self.tasks = [
-            {"email": "Support request: I cannot login.", "label": "support"},
-            {"email": "Sales inquiry: Pricing for 500 units?", "label": "sales"},
-            {"email": "Complaint: My order arrived broken.", "label": "complaint"},
-            {"email": "I want to buy a subscription.", "label": "sales"},
-            {"email": "Shipping delay made me angry.", "label": "complaint"},
+            ("I cannot login", "support"),
+            ("Pricing details?", "sales"),
+            ("Product is broken", "complaint"),
         ]
-        self.current_idx = 0
-        self.email = self.tasks[self.current_idx]
+        self.i = 0
 
     def reset(self):
-        self.current_idx = 0
-        self.email = self.tasks[self.current_idx]
-
+        self.i = 0
         return {
-            "observation": Observation(email=self.email["email"]),   # ✅ FIXED
-            "reward": Reward(value=0.0),                             # ✅ FIXED
+            "observation": Observation(email=self.tasks[0][0]),
+            "reward": Reward(value=0.1),
             "done": False,
-            "info": {"score": 0.0}
+            "info": {}
         }
 
     def step(self, action):
-        target = self.email["label"]
-        action_str = str(action).strip().lower()
+        correct = self.tasks[self.i][1]
+        score = 0.9 if action == correct else 0.1
 
-        score_val = 1.0 if action_str == target else 0.0
+        self.i += 1
+        done = self.i >= len(self.tasks)
 
-        self.current_idx += 1
-        done = self.current_idx >= len(self.tasks)
-
+        next_email = ""
         if not done:
-            self.email = self.tasks[self.current_idx]
+            next_email = self.tasks[self.i][0]
 
         return {
-            "observation": Observation(email=self.email["email"]),   # ✅ FIXED
-            "reward": Reward(value=float(score_val)),                # ✅ FIXED
+            "observation": Observation(email=next_email),
+            "reward": Reward(value=score),
             "done": done,
-            "info": {"score": float(score_val)}
+            "info": {"score": score}
         }
 
     def state(self):
-        return {
-            "current_idx": self.current_idx,
-            "email": self.email["email"]
-        }
+        return {"index": self.i}
