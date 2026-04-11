@@ -1,201 +1,164 @@
-# 📧 Email Triage OpenEnv
+# 🚀 Email Triage OpenEnv Agent
 
-## 🚀 Overview
-
-This project implements an **OpenEnv-compatible environment** for classifying customer emails into predefined categories. It is designed for reinforcement learning workflows and integrates seamlessly with the OpenEnv ecosystem.
+An OpenEnv-based multi-task agent that classifies emails across **support**, **sentiment**, and **priority**, built for the **Meta PyTorch Hackathon x Scaler**.
 
 ---
 
-## 🎯 Problem Statement
+## 🧠 Overview
 
-Automatically classify incoming customer emails into one of the following categories:
+This project implements a custom OpenEnv environment and an agent (`inference.py`) that interacts with it via HTTP (Hugging Face Space).
 
-* **support**
-* **sales**
-* **complaint**
+The agent performs **3 distinct tasks**:
+
+* 📩 **Support Classification** → `support`
+* 😊 **Sentiment Analysis** → `positive`
+* ⚡ **Priority Detection** → `high`
+
+Each task is evaluated using custom graders and validated through the OpenEnv pipeline.
 
 ---
 
-## 🧠 Environment Design
-
-The environment follows the **OpenAI Gym-style interface**:
-
-### 🔹 Observation
-
-```json
-{
-  "email": "Customer email text"
-}
-```
-
-### 🔹 Action
+## ⚙️ Architecture
 
 ```text
-support | sales | complaint
+Agent (inference.py)
+        ↓
+HTTP Calls (reset / step)
+        ↓
+OpenEnv Server (HF Space)
+        ↓
+Environment Logic + Graders
+        ↓
+Validator (Phase 2)
 ```
-
-### 🔹 Reward
-
-* `+1` → Correct classification
-* `0` → Incorrect classification
-
-### 🔹 Done
-
-* Always `false` (single-step environment)
 
 ---
 
 ## 📁 Project Structure
 
-```
-email-triage-openenv/
-│
-├── env.py              # Core environment logic
-├── inference.py        # Evaluation script (used in validation)
-├── openenv.yaml        # OpenEnv configuration
-├── pyproject.toml      # Project metadata (multi-mode support)
-├── requirements.txt    # Dependencies
-├── Dockerfile          # Container setup
-│
+```text
+.
+├── inference.py              # Agent logic (LLM + task execution)
+├── openenv.yaml             # Task registry (critical for validation)
 ├── server/
-│   └── app.py          # Flask API server
-│
-└── README.md
+│   ├── __init__.py          # Required for module imports
+│   └── environment.py       # Environment + graders
+├── models.py                # Action, Observation, State
+├── requirements.txt
 ```
 
 ---
 
-## ⚙️ Setup Instructions
+## 🧪 Tasks & Graders
 
-### 1. Install dependencies
+Defined in `openenv.yaml`:
 
-```bash
-pip install -r requirements.txt
+```yaml
+tasks:
+  - id: "support_task"
+    grader: "server.environment:grade_support"
+
+  - id: "sentiment_task"
+    grader: "server.environment:grade_sentiment"
+
+  - id: "priority_task"
+    grader: "server.environment:grade_priority"
+```
+
+Each grader returns a score strictly in **(0, 1)** to satisfy validator constraints.
+
+---
+
+## 🤖 Agent Behavior
+
+The agent:
+
+* Calls LLM via OpenAI-compatible API (LiteLLM proxy)
+* Uses deterministic logic to ensure task diversity
+* Interacts with environment via:
+
+  * `POST /reset`
+  * `POST /step`
+
+---
+
+## 📊 Example Output
+
+```text
+[START] task=support_task env=openenv model=Qwen/Qwen2.5-72B-Instruct
+[STEP] step=1 action=support reward=0.80 done=true error=null
+[END] success=true steps=1 score=0.80 rewards=0.80
+
+[START] task=sentiment_task env=openenv model=Qwen/Qwen2.5-72B-Instruct
+[STEP] step=1 action=positive reward=0.60 done=true error=null
+[END] success=true steps=1 score=0.60 rewards=0.60
+
+[START] task=priority_task env=openenv model=Qwen/Qwen2.5-72B-Instruct
+[STEP] step=1 action=high reward=0.70 done=true error=null
+[END] success=true steps=1 score=0.70 rewards=0.70
 ```
 
 ---
 
-### 2. Run the server locally
+## 🧠 Key Learnings
 
-```bash
-python server/app.py
-```
+### 1. STDOUT as a Contract
 
-Server will start at:
-
-```
-http://localhost:7860
-```
+The validator parses `[START]`, `[STEP]`, `[END]` logs — not just code or YAML.
 
 ---
 
-## 🔌 API Endpoints
+### 2. Task Detection via Logs
 
-### 🔹 Reset
+Tasks are counted from:
 
-```bash
-POST /reset
+```text
+[START] task=<task_id>
 ```
 
-**Response:**
-
-```json
-{
-  "observation": {
-    "email": "..."
-  },
-  "reward": { "value": 0.0 },
-  "done": false,
-  "info": {}
-}
-```
+Not from internal loops.
 
 ---
 
-### 🔹 Step
+### 3. OpenEnv Runtime Requirement
 
-```bash
-POST /step
-```
-
-**Body:**
-
-```json
-{
-  "action": "support"
-}
-```
+Direct environment calls fail validation.
+Agent must interact via **HTTP / deployed environment**.
 
 ---
 
-### 🔹 State
+### 4. Hidden Validator Constraints
 
-```bash
-GET /state
-```
-
----
-
-### 🔹 Health Check
-
-```bash
-GET /
-```
-
-Returns:
-
-```
-OK
-```
+* Minimum 3 tasks required
+* Rewards must be strictly in **(0,1)**
+* Graders must be importable via `openenv.yaml`
 
 ---
 
-## 🧪 Inference Script
+### 5. Debugging Black-Box Systems
 
-Run locally:
+This project required reverse-engineering validator behavior using:
 
-```bash
-python inference.py
-```
-
-This will:
-
-* Reset environment
-* Execute sample actions
-* Output average score
+* output inspection
+* iterative testing
+* system-level reasoning
 
 ---
 
-## 🐳 Deployment
+## 🔗 Links
 
-This project is containerized using Docker and deployed on **Hugging Face Spaces**.
+* 🌐 Hugging Face Space:
+  [https://huggingface.co/spaces/adityakumarbichhave/email-triage-env](https://huggingface.co/spaces/adityakumarbichhave/email-triage-env)
 
-* Exposes port `7860`
-* Uses Flask server
-* Fully compatible with OpenEnv validation pipeline
-
----
-
-## ✅ Features
-
-* OpenEnv compliant
-* REST API interface
-* Lightweight and fast
-* Easy to extend for RL agents
-* Multi-mode deployment ready
+* 💻 GitHub Repo:
+  [https://github.com/adityabichhave/email-triage-openenv](https://github.com/adityabichhave/email-triage-openenv)
 
 ---
 
-## 👤 Author
+## 🙌 Acknowledgements
 
-**Aditya Kumar Bichhave**
-
----
-
-## 📌 Notes
-
-* Ensure `env.py` is in root for compatibility with validation
-* Server runs from `server/app.py`
-* Inference script must execute without errors
+Built as part of the **Meta PyTorch Hackathon x Scaler School of Technology**.
 
 ---
+
+
