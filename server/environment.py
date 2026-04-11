@@ -27,6 +27,16 @@ class MultiTaskEnv(Environment):
             reward=0.0
         )
 
+
+    def grade_support(action, observation):
+    return 1.0 if action.label == "support" else 0.0
+
+def grade_sentiment(action, observation):
+    return 1.0 if action.label == "positive" else 0.0
+
+def grade_priority(action, observation):
+    return 1.0 if action.label == "high" else 0.0
+    
     def step(self, action: TaskAction, **kwargs):
         text, correct, base_reward = self.task_groups[self.group_idx]
 
