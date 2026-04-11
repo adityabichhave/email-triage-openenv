@@ -1,7 +1,6 @@
 version: "1.0"
 
 name: "email-triage-env"
-
 description: "Email classification tasks"
 
 tasks:
