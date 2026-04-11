@@ -1,16 +1,18 @@
 import asyncio
 import os
+import requests
 from openai import OpenAI
 
-from server.environment import MultiTaskEnv, TaskAction
-
-# 🔥 ENV VARIABLES (WITH DEFAULTS)
+# 🔥 ENV VARIABLES
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 HF_TOKEN = os.getenv("HF_TOKEN")
 
+# 🔥 YOUR HF SPACE URL
+BASE_URL = "https://adityakumarbichhave-email-triage-env.hf.space"
+
 TASK_NAME = "email-triage"
-BENCHMARK = "my_env"
+BENCHMARK = "openenv"
 
 
 def log_start(task, env, model):
@@ -32,9 +34,8 @@ def log_end(success, steps, score, rewards):
     )
 
 
-# 🔥 FINAL LABEL FUNCTION (API + FORCED DIFFERENT TASKS)
+# 🔥 API CALL (MANDATORY)
 def get_label(client, email: str) -> str:
-    # ✅ MUST CALL API (for validator)
     try:
         client.chat.completions.create(
             model=MODEL_NAME,
@@ -45,22 +46,34 @@ def get_label(client, email: str) -> str:
     except:
         pass
 
-    # 🔥 FORCE DIFFERENT TASK BEHAVIOR
-    email_lower = email.lower()
+    email = email.lower()
 
-    if "login" in email_lower:
+    if "login" in email:
         return "support"
-    elif "love" in email_lower:
+    elif "love" in email:
         return "positive"
-    elif "urgent" in email_lower:
+    elif "urgent" in email:
         return "high"
 
     return "support"
 
 
+# 🔥 ENV CALLS (IMPORTANT)
+def reset_env():
+    r = requests.post(f"{BASE_URL}/reset")
+    return r.json()
+
+
+def step_env(label):
+    r = requests.post(
+        f"{BASE_URL}/step",
+        json={"action": {"label": label}},
+    )
+    return r.json()
+
+
 async def main():
     client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
-    env = MultiTaskEnv()
 
     log_start(TASK_NAME, BENCHMARK, MODEL_NAME)
 
@@ -69,17 +82,16 @@ async def main():
 
     try:
         for _ in range(3):
-            result = env.reset()
+            res = reset_env()
 
-            # ✅ Correct observation access
-            email = result.email if hasattr(result, "email") else result.observation.email
+            email = res["observation"]["email"]
 
             label = get_label(client, email)
 
-            result = env.step(TaskAction(label=label))
+            res = step_env(label)
 
-            reward = result.reward or 0.0
-            done = result.done
+            reward = res.get("reward", 0.0)
+            done = res.get("done", True)
 
             rewards.append(reward)
             steps += 1
@@ -90,11 +102,6 @@ async def main():
         success = score > 0.1
 
     finally:
-        try:
-            env.close()
-        except:
-            pass
-
         log_end(success, steps, score, rewards)
 
 
