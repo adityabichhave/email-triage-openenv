@@ -11,7 +11,6 @@ HF_TOKEN = os.getenv("HF_TOKEN")
 # 🔥 YOUR HF SPACE URL
 BASE_URL = "https://adityakumarbichhave-email-triage-env.hf.space"
 
-TASK_NAME = "email-triage"
 BENCHMARK = "openenv"
 
 
@@ -58,7 +57,7 @@ def get_label(client, email: str) -> str:
     return "support"
 
 
-# 🔥 ENV CALLS (IMPORTANT)
+# 🔥 ENV CALLS
 def reset_env():
     r = requests.post(f"{BASE_URL}/reset")
     return r.json()
@@ -75,15 +74,14 @@ def step_env(label):
 async def main():
     client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
 
-    log_start(TASK_NAME, BENCHMARK, MODEL_NAME)
-
-    rewards = []
-    steps = 0
+    # 🔥 MUST MATCH openenv.yaml IDs
+    task_ids = ["support_task", "sentiment_task", "priority_task"]
 
     try:
-        for _ in range(3):
-            res = reset_env()
+        for task_id in task_ids:
+            log_start(task_id, BENCHMARK, MODEL_NAME)
 
+            res = reset_env()
             email = res["observation"]["email"]
 
             label = get_label(client, email)
@@ -93,16 +91,16 @@ async def main():
             reward = res.get("reward", 0.0)
             done = res.get("done", True)
 
-            rewards.append(reward)
-            steps += 1
+            log_step(1, label, reward, done)
 
-            log_step(steps, label, reward, done)
+            score = reward
+            success = score > 0.1
 
-        score = sum(rewards) / len(rewards) if rewards else 0.0
-        success = score > 0.1
+            log_end(success, 1, score, [reward])
 
-    finally:
-        log_end(success, steps, score, rewards)
+    except Exception as e:
+        # ensure script never crashes
+        log_end(False, 0, 0.0, [])
 
 
 if __name__ == "__main__":
