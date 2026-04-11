@@ -5,13 +5,8 @@ from models import TaskAction, TaskObservation, TaskState
 class MultiTaskEnv(Environment):
     def __init__(self):
         self.task_groups = [
-            # TASK 1 → classification
             ("Support request: cannot login", "support", 1.0),
-
-            # TASK 2 → sentiment
             ("I love this product", "positive", 0.5),
-
-            # TASK 3 → priority
             ("URGENT issue", "high", 0.8),
         ]
         self.group_idx = -1
@@ -27,23 +22,13 @@ class MultiTaskEnv(Environment):
             reward=0.0
         )
 
-
-    def grade_support(action, observation):
-    return 1.0 if action.label == "support" else 0.0
-
-def grade_sentiment(action, observation):
-    return 1.0 if action.label == "positive" else 0.0
-
-def grade_priority(action, observation):
-    return 1.0 if action.label == "high" else 0.0
-    
     def step(self, action: TaskAction, **kwargs):
         text, correct, base_reward = self.task_groups[self.group_idx]
 
         action_label = action.label.lower().strip()
 
         if action_label == correct:
-            reward = base_reward   # 🔥 DIFFERENT REWARD PER TASK
+            reward = base_reward
         else:
             reward = 0.0
 
@@ -59,3 +44,17 @@ def grade_priority(action, observation):
 
     def close(self):
         pass
+
+
+# 🔥 IMPORTANT: GRADERS MUST BE OUTSIDE CLASS (TOP LEVEL)
+
+def grade_support(action, observation):
+    return 1.0 if action.label.lower() == "support" else 0.0
+
+
+def grade_sentiment(action, observation):
+    return 1.0 if action.label.lower() == "positive" else 0.0
+
+
+def grade_priority(action, observation):
+    return 1.0 if action.label.lower() == "high" else 0.0
