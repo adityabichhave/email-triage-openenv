@@ -2,36 +2,12 @@ from openenv.core.env_server import Environment
 from models import TaskAction, TaskObservation, TaskState
 
 
-class TaskAction(Action):
-    label: str
-
-
-class TaskObservation(Observation):
-    email: str
-
-
-class TaskState(State):
-    pass
-
-
-class MultiTaskEnv(Environment):  # 🔥 IMPORTANT CHANGE
+class MultiTaskEnv(Environment):
     def __init__(self):
         self.task_groups = [
-            [
-                ("Support request: cannot login", "support"),
-                ("Need pricing info", "sales"),
-                ("Help needed urgently", "support"),
-            ],
-            [
-                ("I love this product", "positive"),
-                ("This is terrible", "negative"),
-                ("Amazing service", "positive"),
-            ],
-            [
-                ("URGENT issue", "high"),
-                ("Can wait", "low"),
-                ("Immediate help required", "high"),
-            ]
+            [("Support request: cannot login", "support")],
+            [("I love this product", "positive")],
+            [("URGENT issue", "high")]
         ]
         self.current_tasks = []
         self.sample_idx = 0
@@ -49,32 +25,16 @@ class MultiTaskEnv(Environment):  # 🔥 IMPORTANT CHANGE
         )
 
     def step(self, action: TaskAction, **kwargs):
-        if not self.current_tasks:
-            self.reset()
-
-        if self.sample_idx >= len(self.current_tasks):
-            return TaskObservation(
-                email="",
-                done=True,
-                reward=0.1
-            )
-
         text, correct = self.current_tasks[self.sample_idx]
 
-        action_label = getattr(action, "label", "").lower().strip()
-        correct = correct.lower().strip()
-
+        action_label = action.label.lower().strip()
         reward = 0.9 if action_label == correct else 0.1
 
         self.sample_idx += 1
-        done = self.sample_idx >= len(self.current_tasks)
-
-        next_email = ""
-        if not done:
-            next_email = self.current_tasks[self.sample_idx][0]
+        done = True  # single-step task → IMPORTANT
 
         return TaskObservation(
-            email=next_email,
+            email="",
             done=done,
             reward=reward
         )
