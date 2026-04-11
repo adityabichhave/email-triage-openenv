@@ -1,10 +1,21 @@
-name: multi-task-env
-version: 1.0
+version: "1.0"
 
-entrypoint:
-  command: uvicorn server.app:app --host 0.0.0.0 --port 7860
+name: "email-triage-env"
+
+description: "Email classification tasks"
 
 tasks:
-  - id: email
-  - id: sentiment
-  - id: priority
+  - id: "support_task"
+    name: "Support Classification"
+    description: "Classify support emails"
+    grader: "server.environment:grade_support"
+
+  - id: "sentiment_task"
+    name: "Sentiment Classification"
+    description: "Classify sentiment"
+    grader: "server.environment:grade_sentiment"
+
+  - id: "priority_task"
+    name: "Priority Classification"
+    description: "Classify urgency"
+    grader: "server.environment:grade_priority"
