@@ -1,13 +1,13 @@
 from openenv.core.env_server import Action, Observation, State
 
 
-class EmailAction(Action):
+class TaskAction(Action):
     label: str
 
 
-class EmailObservation(Observation):
+class TaskObservation(Observation):
     email: str
 
 
-class EmailState(State):
+class TaskState(State):
     pass
