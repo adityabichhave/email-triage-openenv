@@ -1,20 +1,13 @@
 version: "1.0"
 
 name: "email-triage-env"
-description: "Email classification tasks"
 
 tasks:
   - id: "support_task"
-    name: "Support Classification"
-    description: "Classify support emails"
     grader: "server.environment:grade_support"
 
   - id: "sentiment_task"
-    name: "Sentiment Classification"
-    description: "Classify sentiment"
     grader: "server.environment:grade_sentiment"
 
   - id: "priority_task"
-    name: "Priority Classification"
-    description: "Classify urgency"
     grader: "server.environment:grade_priority"
