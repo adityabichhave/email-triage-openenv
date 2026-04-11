@@ -1,4 +1,5 @@
-from openenv.core.env_server import Action, Observation, State, Environment
+from openenv.core.env_server import Environment
+from models import TaskAction, TaskObservation, TaskState
 
 
 class TaskAction(Action):
