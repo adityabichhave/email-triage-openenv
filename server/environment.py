@@ -5,37 +5,41 @@ from models import TaskAction, TaskObservation, TaskState
 class MultiTaskEnv(Environment):
     def __init__(self):
         self.task_groups = [
-            [("Support request: cannot login", "support")],
-            [("I love this product", "positive")],
-            [("URGENT issue", "high")]
+            # TASK 1 → classification
+            ("Support request: cannot login", "support", 1.0),
+
+            # TASK 2 → sentiment
+            ("I love this product", "positive", 0.5),
+
+            # TASK 3 → priority
+            ("URGENT issue", "high", 0.8),
         ]
-        self.current_tasks = []
-        self.sample_idx = 0
         self.group_idx = -1
 
     def reset(self, *args, **kwargs):
         self.group_idx = (self.group_idx + 1) % len(self.task_groups)
-        self.current_tasks = self.task_groups[self.group_idx]
-        self.sample_idx = 0
+
+        text, _, _ = self.task_groups[self.group_idx]
 
         return TaskObservation(
-            email=self.current_tasks[0][0],
+            email=text,
             done=False,
-            reward=0.1
+            reward=0.0
         )
 
     def step(self, action: TaskAction, **kwargs):
-        text, correct = self.current_tasks[self.sample_idx]
+        text, correct, base_reward = self.task_groups[self.group_idx]
 
         action_label = action.label.lower().strip()
-        reward = 0.9 if action_label == correct else 0.1
 
-        self.sample_idx += 1
-        done = True  # single-step task → IMPORTANT
+        if action_label == correct:
+            reward = base_reward   # 🔥 DIFFERENT REWARD PER TASK
+        else:
+            reward = 0.0
 
         return TaskObservation(
             email="",
-            done=done,
+            done=True,
             reward=reward
         )
 
